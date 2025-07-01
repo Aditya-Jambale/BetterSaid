@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Loader2, Sparkles, Clipboard, Check, Lightbulb, ArrowRight, Star, Users, Zap, Shield, Clock, TrendingUp, ChevronRight, Play } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Loader2, Sparkles, Clipboard, Check, Lightbulb, ArrowRight, Star, Zap, Shield, Clock, TrendingUp, ChevronRight, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { useLocalStorage, type HistoryItem, type ApiResponse } from '@/lib/hooks/useLocalStorage';
+import { useChatHistory, type HistoryItem, type ApiResponse } from '@/lib/hooks/useChatHistory';
+import { useMigration } from '@/lib/migration';
 import { toast } from 'sonner';
 import ClientOnly from '@/components/ClientOnly';
 import { 
@@ -30,7 +31,21 @@ export default function Home() {
   const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hasCopied, setHasCopied] = useState<boolean>(false);
-  const [history, setHistory] = useLocalStorage<HistoryItem[]>('bettersaid-history', []);
+  const { history, isLoading: historyLoading, addHistoryItem, deleteHistoryItem, clearHistory } = useChatHistory();
+  const { hasLocalData, migrateData } = useMigration();
+
+  // Automatic migration from localStorage to Supabase
+  useEffect(() => {
+    if (isSignedIn && user?.id && hasLocalData) {
+      migrateData().then((success) => {
+        if (success) {
+          toast.success('Successfully migrated your chat history to the cloud!');
+        }
+      }).catch(() => {
+        console.error('Failed to migrate localStorage data');
+      });
+    }
+  }, [isSignedIn, user?.id, hasLocalData, migrateData]);
 
   // Typewriter effect for real-time enhancement
   const typewriterEffect = async (originalText: string, enhancedText: string) => {
@@ -41,7 +56,6 @@ export default function Home() {
     await new Promise(resolve => setTimeout(resolve, 800));
     
     const words = enhancedText.split(' ');
-    const originalWords = originalText.split(' ');
     
     // Start with original text and gradually replace with enhanced version
     for (let i = 0; i <= words.length; i++) {
@@ -113,14 +127,23 @@ export default function Home() {
       await typewriterEffect(inputPrompt, data.enhancedPrompt);
 
       // Add to history
-      const newHistoryItem: HistoryItem = {
-        id: Date.now().toString(),
+      const newHistoryItem = {
         original: inputPrompt,
         enhanced: data.enhancedPrompt,
         improvements: data.improvements,
       };
 
-      setHistory(prev => [newHistoryItem, ...prev.slice(0, 19)]); // Keep last 20 items
+      console.log('Main page: About to save history item:', newHistoryItem);
+      console.log('Main page: User signed in:', isSignedIn);
+      console.log('Main page: User ID:', user?.id);
+
+      try {
+        const savedItem = await addHistoryItem(newHistoryItem);
+        console.log('Main page: Successfully saved history item:', savedItem);
+      } catch (historyError) {
+        console.error('Main page: Failed to save to history:', historyError);
+        // Don't break the main flow if history save fails
+      }
       
       toast.success('Prompt enhanced successfully!');
     } catch (err) {
@@ -290,11 +313,11 @@ export default function Home() {
               if (canvas && typeof window !== 'undefined') {
                 // Canvas animation setup
                 const ctx = canvas.getContext('2d');
-                let animationId;
+                let animationId: number;
                 
                 // Animation parameters
                 const circleCount = 60; // Reduced for better performance with heavy blur
-                const circles = [];
+                const circles: Circle[] = [];
                 let baseHue = 220;
                 
                 // Initialize canvas
@@ -305,11 +328,23 @@ export default function Home() {
                 
                 // Circle class
                 class Circle {
+                  x: number = 0;
+                  y: number = 0;
+                  radius: number = 0;
+                  speed: number = 0;
+                  angle: number = 0;
+                  vx: number = 0;
+                  vy: number = 0;
+                  life: number = 0;
+                  maxLife: number = 0;
+                  hue: number = 0;
+                  
                   constructor() {
                     this.reset();
                   }
                   
                   reset() {
+                    if (!canvas) return;
                     this.x = Math.random() * canvas.width;
                     this.y = Math.random() * canvas.height;
                     this.radius = 80 + Math.random() * 200; // Larger circles for better blur effect
@@ -323,6 +358,7 @@ export default function Home() {
                   }
                   
                   update() {
+                    if (!canvas) return;
                     this.x += this.vx;
                     this.y += this.vy;
                     this.life++;
@@ -340,6 +376,7 @@ export default function Home() {
                   }
                   
                   draw() {
+                    if (!ctx) return;
                     const alpha = this.life < this.maxLife * 0.1 
                       ? this.life / (this.maxLife * 0.1)
                       : this.life > this.maxLife * 0.9 
@@ -367,6 +404,7 @@ export default function Home() {
                 
                 // Animation loop
                 const animate = () => {
+                  if (!ctx || !canvas) return;
                   // Clear canvas with dark background and slight trail effect
                   ctx.fillStyle = 'rgba(5, 5, 15, 0.05)'; // Lighter clear for trail effect
                   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -506,10 +544,26 @@ export default function Home() {
             <div className="w-80 space-y-6">
               <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-[600px] flex flex-col">
                 <CardHeader className="pb-4 flex-shrink-0">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    Recent History
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      Recent History
+                    </CardTitle>
+                    {history.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          clearHistory().catch(() => {
+                            toast.error('Failed to clear history');
+                          });
+                        }}
+                        className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                      >
+                        Clear All
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3 overflow-y-auto flex-1 pr-2">
                   <ClientOnly fallback={
@@ -518,7 +572,12 @@ export default function Home() {
                       <span className="ml-2 text-sm text-gray-500">Loading history...</span>
                     </div>
                   }>
-                    {history.length === 0 ? (
+                    {historyLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                        <span className="ml-2 text-sm text-gray-500">Loading history...</span>
+                      </div>
+                    ) : history.length === 0 ? (
                       <div className="text-center py-8">
                         <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
                           <Sparkles className="h-6 w-6 text-gray-400" />
@@ -528,26 +587,44 @@ export default function Home() {
                       </div>
                     ) : (
                       history.map((item) => (
-                        <button
+                        <div
                           key={item.id}
-                          className="w-full p-4 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 text-left group"
-                          onClick={() => handleHistoryClick(item)}
+                          className="w-full p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 group relative"
                         >
-                          <p className="text-sm font-medium truncate text-gray-800 dark:text-gray-200 group-hover:text-purple-700 dark:group-hover:text-purple-300">
-                            {item.original}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
-                            {item.enhanced}
-                          </p>
-                          {item.improvements && item.improvements.length > 0 && (
-                            <div className="flex items-center gap-1 mt-2">
-                              <Lightbulb className="h-3 w-3 text-amber-500" />
-                              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                                {item.improvements.length} improvements
-                              </span>
-                            </div>
-                          )}
-                        </button>
+                          <button
+                            className="w-full text-left"
+                            onClick={() => handleHistoryClick(item)}
+                          >
+                            <p className="text-sm font-medium truncate text-gray-800 dark:text-gray-200 group-hover:text-purple-700 dark:group-hover:text-purple-300 pr-8">
+                              {item.original}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate pr-8">
+                              {item.enhanced}
+                            </p>
+                            {item.improvements && item.improvements.length > 0 && (
+                              <div className="flex items-center gap-1 mt-2">
+                                <Lightbulb className="h-3 w-3 text-amber-500" />
+                                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                                  {item.improvements.length} improvements
+                                </span>
+                              </div>
+                            )}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteHistoryItem(item.id).catch(() => {
+                                toast.error('Failed to delete history item');
+                              });
+                            }}
+                            title="Delete this history item"
+                            className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 w-6 h-6 rounded-full bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 flex items-center justify-center text-red-600 dark:text-red-400"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
                       ))
                     )}
                   </ClientOnly>
