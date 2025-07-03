@@ -18,3 +18,12 @@ export type ChatHistory = {
   created_at: string
   updated_at: string
 }
+
+export type UserUsage = {
+  id: string
+  user_id: string
+  month_year: string
+  usage_count: number
+  created_at: string
+  updated_at: string
+}

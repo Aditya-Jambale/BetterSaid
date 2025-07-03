@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Loader2, Sparkles, Clipboard, Check, Lightbulb, ArrowRight, Star, Zap, Shield, Clock, TrendingUp, ChevronRight, Play } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Loader2, Sparkles, Clipboard, Check, Lightbulb, ArrowRight, Star, Zap, Shield, Clock, TrendingUp, ChevronRight, Play, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,18 +9,25 @@ import { useChatHistory, type HistoryItem, type ApiResponse } from '@/lib/hooks/
 import { useMigration } from '@/lib/migration';
 import { toast } from 'sonner';
 import ClientOnly from '@/components/ClientOnly';
+import { UsageDisplay } from '@/components/UsageDisplay';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
 import { 
   SignInButton, 
   SignUpButton, 
   UserButton, 
   SignedIn, 
   SignedOut,
-  useUser 
+  useUser,
+  PricingTable
 } from '@clerk/nextjs';
+import Link from 'next/link';
 
 export default function Home() {
   // Get user info from Clerk
   const { user, isSignedIn } = useUser();
+  
+  // Canvas ref for animation
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   
   // State variables
   const [inputPrompt, setInputPrompt] = useState<string>('');
@@ -31,6 +38,17 @@ export default function Home() {
   const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hasCopied, setHasCopied] = useState<boolean>(false);
+  const [planInfo, setPlanInfo] = useState<{
+    currentPlan: string;
+    monthlyLimit: number;
+    remainingUsage: number;
+    currentUsage?: number;
+  } | null>(null);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState<{
+    show: boolean;
+    reason: 'limit_reached' | 'unauthorized';
+    currentPlan: string;
+  } | null>(null);
   const { history, isLoading: historyLoading, addHistoryItem, deleteHistoryItem, clearHistory } = useChatHistory();
   const { hasLocalData, migrateData } = useMigration();
 
@@ -46,6 +64,164 @@ export default function Home() {
       });
     }
   }, [isSignedIn, user?.id, hasLocalData, migrateData]);
+
+  // Canvas animation effect - runs once on mount to prevent re-rendering
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || typeof window === 'undefined') return;
+
+    // Canvas animation setup
+    const ctx = canvas.getContext('2d');
+    let animationId: number;
+    let lastTime = 0;
+    
+    // Animation parameters
+    const circleCount = 60;
+    const circles: Circle[] = [];
+    let baseHue = 220;
+    
+    // Initialize canvas with fixed size
+    const initCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+    };
+    
+    // Circle class
+    class Circle {
+      x: number = 0;
+      y: number = 0;
+      radius: number = 0;
+      speed: number = 0;
+      angle: number = 0;
+      vx: number = 0;
+      vy: number = 0;
+      life: number = 0;
+      maxLife: number = 0;
+      hue: number = 0;
+      
+      constructor() {
+        this.reset();
+      }
+      
+      reset() {
+        if (!canvas) return;
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.radius = 80 + Math.random() * 200;
+        this.speed = 0.1 + Math.random() * 0.4;
+        this.angle = Math.random() * Math.PI * 2;
+        this.vx = this.speed * Math.cos(this.angle);
+        this.vy = this.speed * Math.sin(this.angle);
+        this.life = 0;
+        this.maxLife = 300 + Math.random() * 400;
+        this.hue = baseHue + (Math.random() - 0.5) * 80;
+      }
+      
+      update(deltaTime: number) {
+        if (!canvas) return;
+        const timeScale = deltaTime / 16.67;
+        
+        this.x += this.vx * timeScale;
+        this.y += this.vy * timeScale;
+        this.life += timeScale;
+        
+        this.x += Math.sin(this.life * 0.01) * 0.5 * timeScale;
+        this.y += Math.cos(this.life * 0.01) * 0.5 * timeScale;
+        
+        if (this.x < -this.radius || this.x > canvas.width + this.radius ||
+            this.y < -this.radius || this.y > canvas.height + this.radius ||
+            this.life > this.maxLife) {
+          this.reset();
+        }
+      }
+      
+      draw() {
+        if (!ctx) return;
+        const alpha = this.life < this.maxLife * 0.1 
+          ? this.life / (this.maxLife * 0.1)
+          : this.life > this.maxLife * 0.9 
+            ? 1 - (this.life - this.maxLife * 0.9) / (this.maxLife * 0.1)
+            : 1;
+        
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.4;
+        ctx.fillStyle = `hsl(${this.hue + Math.sin(this.life * 0.02) * 20}, 70%, 60%)`;
+        ctx.filter = 'blur(40px)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    
+    // Initialize circles
+    const initCircles = () => {
+      circles.length = 0;
+      for (let i = 0; i < circleCount; i++) {
+        circles.push(new Circle());
+      }
+    };
+    
+    // Animation loop
+    const animate = (currentTime: number) => {
+      if (!ctx || !canvas) return;
+      
+      const deltaTime = currentTime - lastTime;
+      lastTime = currentTime;
+      
+      ctx.fillStyle = 'rgba(5, 5, 15, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      baseHue += 0.1 * (deltaTime / 16.67);
+      
+      circles.forEach(circle => {
+        circle.update(deltaTime);
+        circle.draw();
+      });
+      
+      ctx.save();
+      ctx.filter = 'blur(15px)';
+      ctx.globalAlpha = 0.8;
+      ctx.drawImage(canvas, 0, 0);
+      ctx.restore();
+      
+      animationId = requestAnimationFrame(animate);
+    };
+    
+    // Setup
+    initCanvas();
+    initCircles();
+    requestAnimationFrame((time) => {
+      lastTime = time;
+      animate(time);
+    });
+    
+    // Resize handler
+    let resizeTimeout: NodeJS.Timeout;
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        initCanvas();
+        initCircles();
+      }, 250);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []); // Empty dependency array to run only once
 
   // Typewriter effect for real-time enhancement
   const typewriterEffect = async (originalText: string, enhancedText: string) => {
@@ -81,6 +257,7 @@ export default function Home() {
     setIsEnhancing(false);
     setError(null);
     setHasCopied(false);
+    setShowUpgradePrompt(null); // Reset upgrade prompt
     setDisplayedText(inputPrompt); // Start with original text
 
     try {
@@ -114,10 +291,40 @@ export default function Home() {
           statusText: response.statusText,
           data: responseData
         });
+        
+        // Handle specific error cases
+        if (response.status === 401 && responseData.requiresAuth) {
+          setError('Please sign in to continue enhancing prompts.');
+          setShowUpgradePrompt({
+            show: true,
+            reason: 'unauthorized',
+            currentPlan: 'free'
+          });
+          return;
+        }
+        
+        if (response.status === 429 && responseData.requiresUpgrade) {
+          setError('Usage limit exceeded for this month. Please upgrade your plan to continue.');
+          if (responseData.planInfo) {
+            setPlanInfo(responseData.planInfo);
+            setShowUpgradePrompt({
+              show: true,
+              reason: 'limit_reached',
+              currentPlan: responseData.planInfo.currentPlan
+            });
+          }
+          return;
+        }
+        
         throw new Error(responseData.error ?? `Server error: ${response.status}`);
       }
 
       const data: ApiResponse = responseData;
+      
+      // Update plan info if provided
+      if (data.planInfo) {
+        setPlanInfo(data.planInfo);
+      }
       
       setEnhancedPrompt(data.enhancedPrompt);
       setImprovements(data.improvements);
@@ -255,9 +462,9 @@ export default function Home() {
               <a href="#how-it-works" className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
                 How it Works
               </a>
-              <a href="#pricing" className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
+              <Link href="/pricing" className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
                 Pricing
-              </a>
+              </Link>
               <a href="#about" className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
                 About
               </a>
@@ -309,154 +516,11 @@ export default function Home() {
         {/* Animated Canvas Background */}
         <div className="absolute inset-0">
           <canvas 
-            ref={(canvas) => {
-              if (canvas && typeof window !== 'undefined') {
-                // Canvas animation setup
-                const ctx = canvas.getContext('2d');
-                let animationId: number;
-                
-                // Animation parameters
-                const circleCount = 60; // Reduced for better performance with heavy blur
-                const circles: Circle[] = [];
-                let baseHue = 220;
-                
-                // Initialize canvas
-                const resizeCanvas = () => {
-                  canvas.width = window.innerWidth;
-                  canvas.height = window.innerHeight;
-                };
-                
-                // Circle class
-                class Circle {
-                  x: number = 0;
-                  y: number = 0;
-                  radius: number = 0;
-                  speed: number = 0;
-                  angle: number = 0;
-                  vx: number = 0;
-                  vy: number = 0;
-                  life: number = 0;
-                  maxLife: number = 0;
-                  hue: number = 0;
-                  
-                  constructor() {
-                    this.reset();
-                  }
-                  
-                  reset() {
-                    if (!canvas) return;
-                    this.x = Math.random() * canvas.width;
-                    this.y = Math.random() * canvas.height;
-                    this.radius = 80 + Math.random() * 200; // Larger circles for better blur effect
-                    this.speed = 0.1 + Math.random() * 0.4; // Slower movement for aesthetic
-                    this.angle = Math.random() * Math.PI * 2;
-                    this.vx = this.speed * Math.cos(this.angle);
-                    this.vy = this.speed * Math.sin(this.angle);
-                    this.life = 0;
-                    this.maxLife = 300 + Math.random() * 400; // Longer life
-                    this.hue = baseHue + (Math.random() - 0.5) * 80; // Wider hue range
-                  }
-                  
-                  update() {
-                    if (!canvas) return;
-                    this.x += this.vx;
-                    this.y += this.vy;
-                    this.life++;
-                    
-                    // Add subtle noise-based movement
-                    this.x += Math.sin(this.life * 0.01) * 0.5;
-                    this.y += Math.cos(this.life * 0.01) * 0.5;
-                    
-                    // Reset if out of bounds or life exceeded
-                    if (this.x < -this.radius || this.x > canvas.width + this.radius ||
-                        this.y < -this.radius || this.y > canvas.height + this.radius ||
-                        this.life > this.maxLife) {
-                      this.reset();
-                    }
-                  }
-                  
-                  draw() {
-                    if (!ctx) return;
-                    const alpha = this.life < this.maxLife * 0.1 
-                      ? this.life / (this.maxLife * 0.1)
-                      : this.life > this.maxLife * 0.9 
-                        ? 1 - (this.life - this.maxLife * 0.9) / (this.maxLife * 0.1)
-                        : 1;
-                    
-                    ctx.save();
-                    ctx.globalAlpha = alpha * 0.4; // Slightly higher opacity for better blur visibility
-                    ctx.fillStyle = `hsl(${this.hue + Math.sin(this.life * 0.02) * 20}, 70%, 60%)`; // Dynamic color shifting
-                    ctx.filter = 'blur(40px)'; // Ultra-strong blur for maximum dreamy aesthetic effect
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.restore();
-                  }
-                }
-                
-                // Initialize circles
-                const initCircles = () => {
-                  circles.length = 0;
-                  for (let i = 0; i < circleCount; i++) {
-                    circles.push(new Circle());
-                  }
-                };
-                
-                // Animation loop
-                const animate = () => {
-                  if (!ctx || !canvas) return;
-                  // Clear canvas with dark background and slight trail effect
-                  ctx.fillStyle = 'rgba(5, 5, 15, 0.05)'; // Lighter clear for trail effect
-                  ctx.fillRect(0, 0, canvas.width, canvas.height);
-                  
-                  // Update hue slowly for gradual color transitions
-                  baseHue += 0.1;
-                  
-                  // Update and draw circles
-                  circles.forEach(circle => {
-                    circle.update();
-                    circle.draw();
-                  });
-                  
-                  // Apply additional blur to the entire canvas for ultra-dreamy aesthetic
-                  ctx.save();
-                  ctx.filter = 'blur(15px)';
-                  ctx.globalAlpha = 0.8;
-                  ctx.drawImage(canvas, 0, 0);
-                  ctx.restore();
-                  
-                  animationId = requestAnimationFrame(animate);
-                };
-                
-                // Setup
-                resizeCanvas();
-                initCircles();
-                animate();
-                
-                // Handle resize
-                const handleResize = () => {
-                  resizeCanvas();
-                  initCircles();
-                };
-                
-                window.addEventListener('resize', handleResize);
-                
-                // Cleanup
-                return () => {
-                  if (animationId) {
-                    cancelAnimationFrame(animationId);
-                  }
-                  window.removeEventListener('resize', handleResize);
-                };
-              }
-            }}
-            className="absolute inset-0 w-full h-full"
-            style={{
-              background: 'linear-gradient(135deg, rgba(20, 20, 40, 0.9) 0%, rgba(40, 20, 60, 0.8) 50%, rgba(20, 40, 80, 0.9) 100%)'
-            }}
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-none bg-gradient-to-br from-slate-900/90 via-purple-900/80 to-indigo-900/90"
           />
           {/* Overlay for better text contrast */}
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-indigo-900/10 to-blue-900/20"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-indigo-900/10 to-blue-900/20 pointer-events-none"></div>
         </div>
         
         <div className="relative container mx-auto px-4 pt-20 pb-16">
@@ -465,27 +529,9 @@ export default function Home() {
             <div className="inline-flex items-center gap-3 mb-6">
               <div className="relative">
                 <Sparkles className="h-10 w-10 text-white drop-shadow-lg" />
-                <div 
-                  className="absolute -inset-3 bg-purple-400/60 rounded-full blur-xl"
-                  style={{ 
-                    animation: 'pulse 3s ease-in-out infinite',
-                    animationDelay: '0s'
-                  }}
-                ></div>
-                <div 
-                  className="absolute -inset-2 bg-purple-300/70 rounded-full blur-lg"
-                  style={{ 
-                    animation: 'pulse 2.5s ease-in-out infinite',
-                    animationDelay: '0.5s'
-                  }}
-                ></div>
-                <div 
-                  className="absolute -inset-1 bg-purple-200/80 rounded-full blur-md"
-                  style={{ 
-                    animation: 'pulse 2s ease-in-out infinite',
-                    animationDelay: '1s'
-                  }}
-                ></div>
+                <div className="absolute -inset-3 bg-purple-400/20 rounded-full blur-xl animate-pulse"></div>
+                <div className="absolute -inset-2 bg-purple-300/25 rounded-full blur-lg animate-pulse [animation-delay:0.5s]"></div>
+                <div className="absolute -inset-1 bg-purple-200/30 rounded-full blur-md animate-pulse [animation-delay:1s]"></div>
               </div>
               <h1 className="text-6xl font-bold text-white drop-shadow-lg">
                 BetterSaid
@@ -517,19 +563,6 @@ export default function Home() {
                   </Button>
                 </SignUpButton>
               </SignedOut>
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  const targetElement = isSignedIn 
-                    ? document.querySelector('#demo') as HTMLElement
-                    : document.querySelector('#features') as HTMLElement;
-                  if (targetElement) window.scrollTo({top: targetElement.offsetTop, behavior: 'smooth'});
-                }}
-                className="border-purple-200 hover:bg-purple-50 hover:border-purple-300 text-purple-700 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-900/20 font-medium text-lg px-8 py-4 h-auto"
-              >
-                <Play className="mr-2 h-5 w-5" />
-                {isSignedIn ? 'Try Demo' : 'Learn More'}
-              </Button>
             </div>
           </div>
         </div>
@@ -538,11 +571,23 @@ export default function Home() {
       {/* Conditional content based on authentication */}
       <SignedIn>
         {/* Demo Section - Only for authenticated users */}
-        <div id="demo" className="container mx-auto px-4 pb-16">
+        <div id="demo" className="container mx-auto px-4 pt-16 pb-16">
           <div className="flex gap-8 max-w-7xl mx-auto">
             {/* History Sidebar */}
-            <div className="w-80 space-y-6">
-              <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-[600px] flex flex-col">
+            <div className="w-80 h-[600px] flex flex-col">
+              {/* Usage Display - Show plan info and usage limits */}
+              <SignedIn>
+                <div className="mb-4 flex-shrink-0">
+                  <UsageDisplay planInfo={planInfo ? {
+                    currentUsage: planInfo.currentUsage || 0,
+                    monthlyLimit: planInfo.monthlyLimit,
+                    remainingUsage: planInfo.remainingUsage,
+                    currentPlan: planInfo.currentPlan
+                  } : undefined} />
+                </div>
+              </SignedIn>
+              
+              <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex-1 flex flex-col min-h-0">
                 <CardHeader className="pb-4 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -565,69 +610,71 @@ export default function Home() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3 overflow-y-auto flex-1 pr-2">
-                  <ClientOnly fallback={
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
-                      <span className="ml-2 text-sm text-gray-500">Loading history...</span>
-                    </div>
-                  }>
-                    {historyLoading ? (
+                <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                  <div className="space-y-3 overflow-y-auto flex-1 pr-2">
+                    <ClientOnly fallback={
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
                         <span className="ml-2 text-sm text-gray-500">Loading history...</span>
                       </div>
-                    ) : history.length === 0 ? (
-                      <div className="text-center py-8">
-                        <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <Sparkles className="h-6 w-6 text-gray-400" />
+                    }>
+                      {historyLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                          <span className="ml-2 text-sm text-gray-500">Loading history...</span>
                         </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">No history yet</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Enhanced prompts will appear here</p>
-                      </div>
-                    ) : (
-                      history.map((item) => (
-                        <div
-                          key={item.id}
-                          className="w-full p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 group relative"
-                        >
-                          <button
-                            className="w-full text-left"
-                            onClick={() => handleHistoryClick(item)}
-                          >
-                            <p className="text-sm font-medium truncate text-gray-800 dark:text-gray-200 group-hover:text-purple-700 dark:group-hover:text-purple-300 pr-8">
-                              {item.original}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate pr-8">
-                              {item.enhanced}
-                            </p>
-                            {item.improvements && item.improvements.length > 0 && (
-                              <div className="flex items-center gap-1 mt-2">
-                                <Lightbulb className="h-3 w-3 text-amber-500" />
-                                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                                  {item.improvements.length} improvements
-                                </span>
-                              </div>
-                            )}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteHistoryItem(item.id).catch(() => {
-                                toast.error('Failed to delete history item');
-                              });
-                            }}
-                            title="Delete this history item"
-                            className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 w-6 h-6 rounded-full bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 flex items-center justify-center text-red-600 dark:text-red-400"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
+                      ) : history.length === 0 ? (
+                        <div className="text-center py-8">
+                          <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Sparkles className="h-6 w-6 text-gray-400" />
+                          </div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">No history yet</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Enhanced prompts will appear here</p>
                         </div>
-                      ))
-                    )}
-                  </ClientOnly>
+                      ) : (
+                        history.map((item) => (
+                          <div
+                            key={item.id}
+                            className="w-full p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 group relative"
+                          >
+                            <button
+                              className="w-full text-left"
+                              onClick={() => handleHistoryClick(item)}
+                            >
+                              <p className="text-sm font-medium truncate text-gray-800 dark:text-gray-200 group-hover:text-purple-700 dark:group-hover:text-purple-300 pr-8">
+                                {item.original}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate pr-8">
+                                {item.enhanced}
+                              </p>
+                              {item.improvements && item.improvements.length > 0 && (
+                                <div className="flex items-center gap-1 mt-2">
+                                  <Lightbulb className="h-3 w-3 text-amber-500" />
+                                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                                    {item.improvements.length} improvements
+                                  </span>
+                                </div>
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteHistoryItem(item.id).catch(() => {
+                                  toast.error('Failed to delete history item');
+                                });
+                              }}
+                              title="Delete this history item"
+                              className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 w-6 h-6 rounded-full bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 flex items-center justify-center text-red-600 dark:text-red-400"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </ClientOnly>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -677,6 +724,17 @@ export default function Home() {
                     </Button>
                   </CardContent>
                 </Card>
+              )}
+
+              {/* Show upgrade prompt when needed */}
+              {showUpgradePrompt?.show && (
+                <div className="mb-6">
+                  <UpgradePrompt 
+                    currentPlan={showUpgradePrompt.currentPlan}
+                    reason={showUpgradePrompt.reason}
+                    onClose={() => setShowUpgradePrompt(null)}
+                  />
+                </div>
               )}
 
               {/* Results Section - Only show when there's content */}
@@ -864,6 +922,247 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Features Section - For signed-in users */}
+        <div className="py-20 bg-white/50 dark:bg-gray-900/50" id="features">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-gray-800 dark:text-gray-200 mb-4">
+                Why Choose BetterSaid?
+              </h2>
+              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                Advanced AI-powered prompt engineering for better results with every interaction
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 group">
+                <CardContent className="p-8 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-200">
+                    <Sparkles className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">AI-Powered Enhancement</h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Advanced algorithms analyze and improve your prompts using the latest prompt engineering techniques for maximum effectiveness.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 group">
+                <CardContent className="p-8 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-200">
+                    <Zap className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Instant Results</h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Get enhanced prompts in seconds with detailed improvement explanations and real-time enhancement visualization.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 group">
+                <CardContent className="p-8 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-200">
+                    <Lightbulb className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Learn & Improve</h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Understand what makes prompts effective with detailed improvement insights and become a prompt engineering expert.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 group">
+                <CardContent className="p-8 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-200">
+                    <Shield className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Privacy First</h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Your prompts are processed securely and never stored permanently. Complete privacy protection for sensitive content.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 group">
+                <CardContent className="p-8 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-200">
+                    <Clock className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Save Time</h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Stop spending hours crafting the perfect prompt. Let AI do the heavy lifting and focus on what matters most.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 group">
+                <CardContent className="p-8 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-200">
+                    <TrendingUp className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Better Results</h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Get significantly better outputs from any AI model with professionally enhanced prompts that work consistently.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+
+        {/* How It Works Section - For signed-in users */}
+        <div className="py-20" id="how-it-works">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-gray-800 dark:text-gray-200 mb-4">
+                How BetterSaid Works
+              </h2>
+              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                Transform your prompts in three simple steps
+              </p>
+            </div>
+            <div className="max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="text-center group">
+                  <div className="relative mb-8">
+                    <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-200 shadow-lg">
+                      <span className="text-2xl font-bold text-white">1</span>
+                    </div>
+                    <div className="hidden md:block absolute top-10 left-full w-full h-0.5 bg-gradient-to-r from-purple-300 to-transparent"></div>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Input Your Prompt</h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Simply paste or type your original prompt into our intuitive interface. No special formatting required.
+                  </p>
+                </div>
+
+                <div className="text-center group">
+                  <div className="relative mb-8">
+                    <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-200 shadow-lg">
+                      <span className="text-2xl font-bold text-white">2</span>
+                    </div>
+                    <div className="hidden md:block absolute top-10 left-full w-full h-0.5 bg-gradient-to-r from-emerald-300 to-transparent"></div>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">AI Enhancement</h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Our advanced AI analyzes your prompt and applies proven enhancement techniques in real-time.
+                  </p>
+                </div>
+
+                <div className="text-center group">
+                  <div className="relative mb-8">
+                    <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-200 shadow-lg">
+                      <span className="text-2xl font-bold text-white">3</span>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Get Better Results</h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Receive your enhanced prompt with detailed explanations of improvements and copy it instantly.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* About Section - For signed-in users */}
+        <div className="py-20 bg-white/50 dark:bg-gray-900/50" id="about">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-gray-800 dark:text-gray-200 mb-4">
+                About BetterSaid
+              </h2>
+              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed">
+                We're on a mission to democratize AI prompt engineering. Our platform empowers everyone to get better results from AI, 
+                regardless of their technical expertise or experience with prompt crafting.
+              </p>
+            </div>
+            <div className="max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+                  <CardContent className="p-8">
+                    <h3 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Our Mission</h3>
+                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                      To make AI more accessible and effective for everyone by providing intelligent prompt enhancement 
+                      that transforms simple ideas into powerful, detailed instructions that consistently deliver better results.
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+                  <CardContent className="p-8">
+                    <h3 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Our Vision</h3>
+                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                      A world where anyone can harness the full potential of AI through expertly crafted prompts, 
+                      bridging the gap between human creativity and artificial intelligence capabilities.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer - For signed-in users */}
+        <footer className="py-12 bg-gray-900 text-white">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center">
+                    <Sparkles className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
+                    BetterSaid
+                  </h3>
+                </div>
+                <p className="text-gray-400 leading-relaxed">
+                  Transform your prompts into powerful, detailed instructions for AI with our advanced prompt engineering technology.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Product</h4>
+                <ul className="space-y-2 text-gray-400">
+                  <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
+                  <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">API</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">Integrations</a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Company</h4>
+                <ul className="space-y-2 text-gray-400">
+                  <li><a href="#about" className="hover:text-white transition-colors">About</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Legal</h4>
+                <ul className="space-y-2 text-gray-400">
+                  <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">Cookie Policy</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">Security</a></li>
+                </ul>
+              </div>
+            </div>
+            <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+              <p>&copy; {new Date().getFullYear()} BetterSaid. All rights reserved.</p>
+              <p className="mt-2 text-sm">
+                Crafted with ❤️ by{' '}
+                <a 
+                  href="https://x.com/adityajtwts" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-purple-400 hover:text-purple-300 font-medium transition-colors underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                >
+                  Aditya
+                </a>
+              </p>
+            </div>
+          </div>
+        </footer>
       </SignedIn>
       
       <SignedOut>
@@ -1093,122 +1392,119 @@ export default function Home() {
         </div>
 
         {/* Pricing Section */}
-        <div className="py-20" id="pricing">
-          <div className="container mx-auto px-4">
+        <div className="py-20 bg-gradient-to-br from-purple-900 via-violet-900 to-indigo-900 relative overflow-hidden" id="pricing">
+          {/* Background Elements */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.15)_1px,transparent_0)] bg-[size:20px_20px]"></div>
+          </div>
+          
+          {/* Floating Orbs */}
+          <div className="absolute top-10 left-10 w-20 h-20 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full blur-xl opacity-30 animate-pulse"></div>
+          <div className="absolute top-1/3 right-20 w-32 h-32 bg-gradient-to-r from-violet-400 to-purple-400 rounded-full blur-2xl opacity-20 animate-pulse delay-1000"></div>
+          <div className="absolute bottom-20 left-1/4 w-24 h-24 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full blur-xl opacity-25 animate-pulse delay-2000"></div>
+          
+          <div className="container mx-auto px-4 relative">
+            {/* Page Title */}
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-gray-800 dark:text-gray-200 mb-4">
-                Simple, Transparent Pricing
+              <div className="inline-block mb-4">
+                <span className="bg-gradient-to-r from-purple-300 to-pink-300 text-transparent bg-clip-text text-sm font-semibold tracking-wider uppercase">
+                  Pricing Plans
+                </span>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+                Simple, Transparent{' '}
+                <span className="bg-gradient-to-r from-purple-300 via-pink-300 to-violet-300 text-transparent bg-clip-text">
+                  Pricing
+                </span>
               </h2>
-              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              <p className="text-xl text-purple-100 max-w-3xl mx-auto leading-relaxed">
                 Choose the plan that works best for you. No hidden fees, cancel anytime.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              {/* Free Plan */}
-              <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-8">
-                  <div className="text-center mb-8">
-                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">Starter</h3>
-                    <div className="mb-4">
-                      <span className="text-4xl font-bold text-gray-800 dark:text-gray-200">$0</span>
-                      <span className="text-gray-500 dark:text-gray-400">/month</span>
-                    </div>
-                    <p className="text-gray-600 dark:text-gray-400">Perfect for trying out BetterSaid</p>
-                  </div>
-                  <ul className="space-y-4 mb-8">
-                    <li className="flex items-center">
-                      <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-400">10 enhancements per month</span>
-                    </li>
-                    <li className="flex items-center">
-                      <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-400">Basic improvement insights</span>
-                    </li>
-                    <li className="flex items-center">
-                      <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-400">Email support</span>
-                    </li>
-                  </ul>
-                  <Button variant="outline" className="w-full h-12 border-purple-200 hover:bg-purple-50 hover:border-purple-300 text-purple-700 font-medium">
-                    Get Started Free
-                  </Button>
-                </CardContent>
-              </Card>
 
-              {/* Pro Plan */}
-              <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 relative">
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-1 rounded-full text-sm font-medium">
-                    Most Popular
-                  </span>
+            {/* Features Overview */}
+            <div className="grid md:grid-cols-4 gap-8 mb-20">
+              <div className="text-center group">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Zap className="w-8 h-8 text-white" />
                 </div>
-                <CardContent className="p-8">
-                  <div className="text-center mb-8">
-                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">Professional</h3>
-                    <div className="mb-4">
-                      <span className="text-4xl font-bold text-gray-800 dark:text-gray-200">$19</span>
-                      <span className="text-gray-500 dark:text-gray-400">/month</span>
-                    </div>
-                    <p className="text-gray-600 dark:text-gray-400">For professionals and teams</p>
-                  </div>
-                  <ul className="space-y-4 mb-8">
-                    <li className="flex items-center">
-                      <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-400">500 enhancements per month</span>
-                    </li>
-                    <li className="flex items-center">
-                      <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-400">Advanced improvement analytics</span>
-                    </li>
-                    <li className="flex items-center">
-                      <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-400">Priority support</span>
-                    </li>
-                    <li className="flex items-center">
-                      <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-400">Export & save prompts</span>
-                    </li>
-                  </ul>
-                  <Button className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium">
-                    Start Pro Trial
-                  </Button>
-                </CardContent>
-              </Card>
+                <h3 className="text-lg font-semibold text-white mb-2">Lightning Fast</h3>
+                <p className="text-purple-200 text-sm">Get enhanced prompts in seconds with our optimized AI engine</p>
+              </div>
+              
+              <div className="text-center group">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Shield className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Secure & Private</h3>
+                <p className="text-purple-200 text-sm">Your data is protected with enterprise-grade security</p>
+              </div>
+              
+              <div className="text-center group">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Clock className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">24/7 Available</h3>
+                <p className="text-purple-200 text-sm">Access your prompt enhancer anytime, anywhere</p>
+              </div>
+              
+              <div className="text-center group">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Star className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Premium Quality</h3>
+                <p className="text-purple-200 text-sm">Get the best prompt enhancements powered by advanced AI</p>
+              </div>
+            </div>
 
-              {/* Enterprise Plan */}
-              <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-8">
+            {/* Pricing Table Container */}
+            <div className="w-full max-w-none mx-auto relative">
+              <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
+                <CardContent className="p-4 md:p-6 lg:p-8">
                   <div className="text-center mb-8">
-                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">Enterprise</h3>
-                    <div className="mb-4">
-                      <span className="text-4xl font-bold text-gray-800 dark:text-gray-200">$99</span>
-                      <span className="text-gray-500 dark:text-gray-400">/month</span>
-                    </div>
-                    <p className="text-gray-600 dark:text-gray-400">For large teams and organizations</p>
+                    <h3 className="text-3xl font-bold text-gray-900 mb-4">Choose Your Plan</h3>
+                    <p className="text-gray-600 text-lg">All plans include our core features with different usage limits</p>
                   </div>
-                  <ul className="space-y-4 mb-8">
-                    <li className="flex items-center">
-                      <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-400">Unlimited enhancements</span>
-                    </li>
-                    <li className="flex items-center">
-                      <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-400">Custom AI models</span>
-                    </li>
-                    <li className="flex items-center">
-                      <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-400">24/7 dedicated support</span>
-                    </li>
-                    <li className="flex items-center">
-                      <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-400">API access</span>
-                    </li>
-                  </ul>
-                  <Button variant="outline" className="w-full h-12 border-gray-300 hover:bg-gray-50 hover:border-gray-400 text-gray-700 font-medium">
-                    Contact Sales
-                  </Button>
+                  
+                  {/* Clerk Pricing Table - Full Width Container */}
+                  <div className="w-full overflow-x-auto overflow-y-visible bg-gray-50/30 rounded-2xl border border-gray-100/50 p-6 md:p-8">
+                    <div className="w-full min-w-max block">
+                      <PricingTable />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Additional Features */}
+            <div className="mt-20 text-center">
+              <h3 className="text-3xl font-bold text-white mb-8">What's Included in All Plans</h3>
+              <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                <div className="flex items-center gap-3 text-purple-100 bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span className="font-medium">AI-powered prompt enhancement</span>
+                </div>
+                <div className="flex items-center gap-3 text-purple-100 bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span className="font-medium">Chat history & organization</span>
+                </div>
+                <div className="flex items-center gap-3 text-purple-100 bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span className="font-medium">Export & sharing options</span>
+                </div>
+                <div className="flex items-center gap-3 text-purple-100 bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span className="font-medium">Real-time processing</span>
+                </div>
+                <div className="flex items-center gap-3 text-purple-100 bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span className="font-medium">Mobile-optimized interface</span>
+                </div>
+                <div className="flex items-center gap-3 text-purple-100 bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <span className="font-medium">24/7 customer support</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

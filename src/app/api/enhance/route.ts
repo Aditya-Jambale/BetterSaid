@@ -1,6 +1,8 @@
 // app/api/enhance/route.ts
 
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { UsageService } from '@/lib/usageService';
 
 // Check if API key is available
 if (!process.env.GEMINI_API_KEY) {
@@ -14,6 +16,49 @@ const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL
 
 export async function POST(req: Request) {
   try {
+    // Check authentication
+    const { userId, has } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Please sign in to continue.', requiresAuth: true },
+        { status: 401 }
+      );
+    }
+
+    // Determine user's plan
+    const hasStarterPlan = has({ plan: 'starter' });
+    const hasProPlan = has({ plan: 'pro' });
+    const hasBusinessPlan = has({ plan: 'business' });
+    
+    let currentPlan = 'free';
+    if (hasBusinessPlan) currentPlan = 'business';
+    else if (hasProPlan) currentPlan = 'pro';
+    else if (hasStarterPlan) currentPlan = 'starter';
+
+    // Check usage limits
+    let usageCheck;
+    try {
+      usageCheck = await UsageService.checkUsageLimit(userId, currentPlan);
+    } catch (usageError) {
+      console.error('Error checking usage limits:', usageError);
+      // Allow the request to proceed if usage check fails, but log the error
+      usageCheck = { canUse: true, currentUsage: 0, limit: 25, remaining: 25 };
+    }
+    
+    if (!usageCheck.canUse) {
+      return NextResponse.json({
+        error: 'Usage limit exceeded for this month',
+        planInfo: {
+          currentPlan,
+          monthlyLimit: usageCheck.limit,
+          remainingUsage: usageCheck.remaining,
+          currentUsage: usageCheck.currentUsage
+        },
+        requiresUpgrade: true
+      }, { status: 429 });
+    }
+
     const { prompt } = await req.json();
 
     if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
@@ -84,7 +129,7 @@ Return ONLY this JSON object with no additional text, formatting, or commentary 
       const errorBody = await response.json();
       console.error('Gemini API Error:', errorBody);
       return NextResponse.json(
-        { error: 'Failed to get response from Gemini API', details: errorBody.error?.message || 'Unknown error' },
+        { error: 'Failed to get response from Gemini API', details: errorBody.error?.message ?? 'Unknown error' },
         { status: response.status }
       );
     }
@@ -103,9 +148,27 @@ Return ONLY this JSON object with no additional text, formatting, or commentary 
     // The text part itself is the JSON string we need to parse.
     const parsedResponse = JSON.parse(candidate.content.parts[0].text);
 
+    // Increment usage count after successful enhancement
+    let newUsageCount = usageCheck.currentUsage;
+    let updatedUsageCheck = usageCheck;
+    
+    try {
+      newUsageCount = await UsageService.incrementUsage(userId);
+      updatedUsageCheck = await UsageService.checkUsageLimit(userId, currentPlan);
+    } catch (usageError) {
+      console.error('Error updating usage count:', usageError);
+      // Continue with the response even if usage tracking fails
+    }
+
     return NextResponse.json({
       enhancedPrompt: parsedResponse.enhanced_prompt,
-      improvements: parsedResponse.improvements
+      improvements: parsedResponse.improvements,
+      planInfo: {
+        currentPlan,
+        monthlyLimit: updatedUsageCheck.limit,
+        remainingUsage: updatedUsageCheck.remaining,
+        currentUsage: newUsageCount
+      }
     });
 
   } catch (error) {

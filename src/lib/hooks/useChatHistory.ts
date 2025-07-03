@@ -15,6 +15,11 @@ export type HistoryItem = {
 export type ApiResponse = {
   enhancedPrompt: string
   improvements: string[]
+  planInfo?: {
+    currentPlan: string
+    monthlyLimit: number
+    remainingUsage: number
+  }
 }
 
 // Client-side database operations for chat history
