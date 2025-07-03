@@ -22,6 +22,107 @@
   animation: float 3s ease-in-out infinite;
 }
 
+/* Background Gradient Animation keyframes */
+@keyframes first {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes second {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes third {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fourth {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes fifth {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sixth {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes seventh {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  33% {
+    transform: rotate(-120deg) scale(0.9);
+  }
+  66% {
+    transform: rotate(240deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(-360deg) scale(1);
+  }
+}
+
+.animate-first {
+  animation: first 20s linear infinite;
+}
+
+.animate-second {
+  animation: second 25s linear infinite;
+}
+
+.animate-third {
+  animation: third 18s linear infinite;
+}
+
+.animate-fourth {
+  animation: fourth 22s linear infinite;
+}
+
+.animate-fifth {
+  animation: fifth 24s linear infinite;
+}
+
+.animate-sixth {
+  animation: sixth 30s ease-in-out infinite;
+}
+
+.animate-seventh {
+  animation: seventh 35s ease-in-out infinite;
+}
+
 /* Smooth scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

@@ -21,6 +21,7 @@ import {
   PricingTable
 } from '@clerk/nextjs';
 import Link from 'next/link';
+import { BackgroundGradientAnimation } from '@/components/ui/background-gradient-animation';
 
 export default function Home() {
   // Get user info from Clerk
@@ -512,67 +513,89 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        {/* Animated Canvas Background */}
-        <div className="absolute inset-0">
-          <canvas 
-            ref={canvasRef}
-            className="absolute inset-0 w-full h-full pointer-events-none bg-gradient-to-br from-slate-900/90 via-purple-900/80 to-indigo-900/90"
-          />
-          {/* Overlay for better text contrast */}
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-indigo-900/10 to-blue-900/20 pointer-events-none"></div>
-        </div>
-        
-        <div className="relative container mx-auto px-4 pt-20 pb-16">
-          {/* Header */}
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-3 mb-6">
-              <div className="relative">
-                <Sparkles className="h-10 w-10 text-white drop-shadow-lg" />
-                <div className="absolute -inset-3 bg-purple-400/20 rounded-full blur-xl animate-pulse"></div>
-                <div className="absolute -inset-2 bg-purple-300/25 rounded-full blur-lg animate-pulse [animation-delay:0.5s]"></div>
-                <div className="absolute -inset-1 bg-purple-200/30 rounded-full blur-md animate-pulse [animation-delay:1s]"></div>
+      <section className="relative h-[70vh] overflow-hidden">
+        <BackgroundGradientAnimation
+          gradientBackgroundStart="rgb(0, 0, 0)"
+          gradientBackgroundEnd="rgb(20, 20, 30)"
+          firstColor="18, 113, 255"
+          secondColor="221, 74, 255"
+          thirdColor="100, 220, 255"
+          fourthColor="200, 50, 50"
+          fifthColor="180, 180, 50"
+          pointerColor="140, 100, 255"
+          size="90%"
+          blendingValue="hard-light"
+          containerClassName="absolute inset-0"
+          interactive={true}
+        >
+          {/* Hero Content */}
+          <div className="relative z-10 container mx-auto px-4 py-16 h-full flex items-center">
+            <div className="max-w-4xl mx-auto text-center w-full">
+              {/* Logo and Title on Same Line */}
+              <div className="mb-8">
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <div className="relative">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                    </div>
+                    <div className="absolute -inset-1 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl blur opacity-20 animate-pulse"></div>
+                  </div>
+                  <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black text-white drop-shadow-2xl tracking-tight">
+                    BetterSaid
+                  </h1>
+                </div>
               </div>
-              <h1 className="text-6xl font-bold text-white drop-shadow-lg">
-                BetterSaid
-              </h1>
-            </div>
-            <p className="text-xl text-white max-w-2xl mx-auto leading-relaxed mb-8 font-medium drop-shadow-md">
-              Turn simple ideas into AI masterpieces. Get 10x better results with prompts that actually work - no more trial and error!
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              <SignedIn>
-                <Button 
-                  onClick={() => {
-                    const demoElement = document.querySelector('#demo') as HTMLElement;
-                    if (demoElement) window.scrollTo({top: demoElement.offsetTop, behavior: 'smooth'});
-                  }}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium text-lg px-8 py-4 h-auto shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Go to App
-                </Button>
-              </SignedIn>
-              <SignedOut>
-                <SignUpButton mode="modal">
+              
+              {/* Subtitle */}
+              <p className="text-lg sm:text-xl lg:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed mb-12 font-medium drop-shadow-lg">
+                Professional AI prompt engineering that delivers exceptional results. Transform ordinary prompts into expertly crafted instructions for superior AI performance.
+              </p>
+              
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                <SignedIn>
                   <Button 
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium text-lg px-8 py-4 h-auto shadow-lg hover:shadow-xl transition-all duration-200"
+                    onClick={() => {
+                      const demoElement = document.querySelector('#demo') as HTMLElement;
+                      if (demoElement) {
+                        demoElement.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    size="lg"
+                    className="relative group bg-gradient-to-r from-blue-500 via-purple-600 to-pink-600 hover:from-blue-600 hover:via-purple-700 hover:to-pink-700 text-white font-bold text-lg px-10 py-5 h-auto shadow-2xl hover:shadow-3xl transition-all duration-500 border-0 overflow-hidden"
                   >
-                    <Sparkles className="mr-2 h-5 w-5" />
-                    Try BetterSaid Free
+                    {/* Button Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-orange-500/20 to-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <Sparkles className="mr-3 h-6 w-6 relative z-10" />
+                    <span className="relative z-10">Enhance Your Prompts</span>
                   </Button>
-                </SignUpButton>
-              </SignedOut>
+                </SignedIn>
+                
+                <SignedOut>
+                  <SignUpButton mode="modal">
+                    <Button 
+                      size="lg"
+                      className="relative group bg-gradient-to-r from-blue-500 via-purple-600 to-pink-600 hover:from-blue-600 hover:via-purple-700 hover:to-pink-700 text-white font-bold text-lg px-10 py-5 h-auto shadow-2xl hover:shadow-3xl transition-all duration-500 border-0 overflow-hidden"
+                    >
+                      {/* Button Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-orange-500/20 to-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                      <Sparkles className="mr-3 h-6 w-6 relative z-10" />
+                      <span className="relative z-10">Start for Free</span>
+                    </Button>
+                  </SignUpButton>
+                </SignedOut>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </BackgroundGradientAnimation>
+      </section>
 
       {/* Conditional content based on authentication */}
       <SignedIn>
         {/* Demo Section - Only for authenticated users */}
-        <div id="demo" className="container mx-auto px-4 pt-16 pb-16">
-          <div className="flex gap-8 max-w-7xl mx-auto">
+        <section id="demo" className="py-16 bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+          <div className="container mx-auto px-4">
+            <div className="flex gap-8 max-w-7xl mx-auto">
             {/* History Sidebar */}
             <div className="w-80 h-[600px] flex flex-col">
               {/* Usage Display - Show plan info and usage limits */}
@@ -921,7 +944,8 @@ export default function Home() {
               )}
             </div>
           </div>
-        </div>
+          </div>
+        </section>
 
         {/* Features Section - For signed-in users */}
         <div className="py-20 bg-white/50 dark:bg-gray-900/50" id="features">
@@ -1167,9 +1191,9 @@ export default function Home() {
       
       <SignedOut>
         {/* Landing Page Sections - For non-authenticated users */}
-        <div>
+        <div className="bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
           {/* Features Section */}
-          <div className="py-20 bg-white/50 dark:bg-gray-900/50" id="features">
+          <section className="py-20" id="features">
           <div className="container mx-auto px-4">
             <div className="text-center mb-16">
               <h2 className="text-4xl font-bold text-gray-800 dark:text-gray-200 mb-4">
@@ -1253,10 +1277,10 @@ export default function Home() {
               </Card>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* How It Works Section */}
-        <div className="py-20" id="how-it-works">
+        <section className="py-20" id="how-it-works">
           <div className="container mx-auto px-4">
             <div className="text-center mb-16">
               <h2 className="text-4xl font-bold text-gray-800 dark:text-gray-200 mb-4">
@@ -1308,7 +1332,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Testimonials Section */}
         <div className="py-20 bg-white/50 dark:bg-gray-900/50">
