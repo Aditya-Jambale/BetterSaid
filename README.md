@@ -32,7 +32,7 @@ Transform your prompts into powerful, detailed instructions for AI systems.
 
 ## Environment Variables
 
-- \GEMINI_API_KEY\: Your Google Gemini API key
+- GEMINI_API_KEY: Your Google Gemini API key
 
 ## License
 
