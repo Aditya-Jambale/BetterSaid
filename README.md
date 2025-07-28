@@ -21,13 +21,13 @@ Transform your prompts into powerful, detailed instructions for AI systems.
 
 1. Clone the repository
 2. Install dependencies: \
-pm install\
+      npm install\
 3. Create \.env.local\ with your Gemini API key:
    \\\
    GEMINI_API_KEY=your_api_key_here
    \\\
 4. Run development server: \
-pm run dev\
+      npm run dev\
 5. Open [http://localhost:3000](http://localhost:3000)
 
 ## Environment Variables
