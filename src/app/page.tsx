@@ -1176,7 +1176,7 @@ export default function Home() {
               <p className="mt-2 text-sm">
                 Crafted with ❤️ by{' '}
                 <a 
-                  href="https://x.com/adityajtwts" 
+                  href="https://www.linkedin.com/in/adityajambale" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-purple-400 hover:text-purple-300 font-medium transition-colors underline decoration-dotted underline-offset-2 hover:decoration-solid"
@@ -1618,7 +1618,7 @@ export default function Home() {
               <p className="mt-2 text-sm">
                 Crafted with ❤️ by{' '}
                 <a 
-                  href="https://x.com/adityajtwts" 
+                  href="https://www.linkedin.com/in/adityajambale" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-purple-400 hover:text-purple-300 font-medium transition-colors underline decoration-dotted underline-offset-2 hover:decoration-solid"
