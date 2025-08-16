@@ -1342,7 +1342,7 @@ export default function Home() {
                 What Our Users Say
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                Join thousands of satisfied users who've transformed their AI interactions
+                Join thousands of satisfied users who&apos;ve transformed their AI interactions
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
