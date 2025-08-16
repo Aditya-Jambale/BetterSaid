@@ -2,7 +2,7 @@
 
 import { supabase, type ChatHistory } from '../supabase'
 import { useUser } from '@clerk/nextjs'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export type HistoryItem = {
   id: string
@@ -114,17 +114,7 @@ export function useChatHistory() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Load history when user is available
-  useEffect(() => {
-    if (isSignedIn && user?.id) {
-      loadHistory()
-    } else {
-      setHistory([])
-      setIsLoading(false)
-    }
-  }, [isSignedIn, user?.id]) // Removed loadHistory from dependencies to avoid infinite loop
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     if (!user?.id) return
 
     try {
@@ -140,7 +130,17 @@ export function useChatHistory() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user?.id])
+
+  // Load history when user is available
+  useEffect(() => {
+    if (isSignedIn && user?.id) {
+      loadHistory()
+    } else {
+      setHistory([])
+      setIsLoading(false)
+    }
+  }, [isSignedIn, user?.id, loadHistory])
 
   const addHistoryItem = async (item: Omit<HistoryItem, 'id' | 'created_at'>) => {
     if (!user?.id) {

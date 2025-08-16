@@ -103,7 +103,7 @@ export default function PricingPage() {
 
         {/* Additional Features */}
         <div className="mt-20 text-center">
-          <h3 className="text-3xl font-bold text-white mb-8">What's Included in All Plans</h3>
+          <h3 className="text-3xl font-bold text-white mb-8">What&apos;s Included in All Plans</h3>
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <div className="flex items-center gap-3 text-purple-100 bg-white/10 backdrop-blur-sm rounded-lg p-4">
               <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />

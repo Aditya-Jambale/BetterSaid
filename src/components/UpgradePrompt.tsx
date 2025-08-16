@@ -72,7 +72,7 @@ export function UpgradePrompt({ currentPlan, reason, onClose }: UpgradePromptPro
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-blue-700 text-sm">
-            Please sign in to start enhancing your prompts. It's completely free to get started!
+            Please sign in to start enhancing your prompts. It&apos;s completely free to get started!
           </p>
           <div className="flex gap-2">
             <SignInButton mode="modal">
@@ -103,7 +103,7 @@ export function UpgradePrompt({ currentPlan, reason, onClose }: UpgradePromptPro
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-amber-700 text-sm">
-            You've reached your monthly enhancement limit for the {currentPlan} plan. 
+            You&apos;ve reached your monthly enhancement limit for the {currentPlan} plan. 
             Upgrade to continue enhancing prompts this month.
           </p>
           

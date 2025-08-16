@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, Sparkles, Clipboard, Check, Lightbulb, ArrowRight, Star, Zap, Shield, Clock, TrendingUp, ChevronRight, Play, CheckCircle } from 'lucide-react';
+import { Loader2, Sparkles, Clipboard, Check, Lightbulb, ArrowRight, Star, Zap, Shield, Clock, TrendingUp, ChevronRight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -1097,7 +1097,7 @@ export default function Home() {
                 About BetterSaid
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed">
-                We're on a mission to democratize AI prompt engineering. Our platform empowers everyone to get better results from AI, 
+                We&apos;re on a mission to democratize AI prompt engineering. Our platform empowers everyone to get better results from AI, 
                 regardless of their technical expertise or experience with prompt crafting.
               </p>
             </div>
@@ -1354,7 +1354,7 @@ export default function Home() {
                     ))}
                   </div>
                   <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                    "BetterSaid completely transformed how I work with AI. My prompts are now 10x more effective, and I'm getting exactly the results I need every time."
+                    &ldquo;BetterSaid completely transformed how I work with AI. My prompts are now 10x more effective, and I&apos;m getting exactly the results I need every time.&rdquo;
                   </p>
                   <div className="flex items-center">
                     <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
@@ -1376,7 +1376,7 @@ export default function Home() {
                     ))}
                   </div>
                   <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                    "As a developer, I use AI daily. BetterSaid helps me craft better code generation prompts and saves me hours of trial and error."
+                    &ldquo;As a developer, I use AI daily. BetterSaid helps me craft better code generation prompts and saves me hours of trial and error.&rdquo;
                   </p>
                   <div className="flex items-center">
                     <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
@@ -1398,7 +1398,7 @@ export default function Home() {
                     ))}
                   </div>
                   <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                    "The real-time enhancement feature is incredible. I can see exactly how my prompts are improved and learn from each iteration."
+                    &ldquo;The real-time enhancement feature is incredible. I can see exactly how my prompts are improved and learn from each iteration.&rdquo;
                   </p>
                   <div className="flex items-center">
                     <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
@@ -1502,7 +1502,7 @@ export default function Home() {
 
             {/* Additional Features */}
             <div className="mt-20 text-center">
-              <h3 className="text-3xl font-bold text-white mb-8">What's Included in All Plans</h3>
+              <h3 className="text-3xl font-bold text-white mb-8">What&apos;s Included in All Plans</h3>
               <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
                 <div className="flex items-center gap-3 text-purple-100 bg-white/10 backdrop-blur-sm rounded-lg p-4">
                   <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
@@ -1540,7 +1540,7 @@ export default function Home() {
               Ready to Transform Your Prompts?
             </h2>
             <p className="text-xl text-purple-100 mb-8 max-w-2xl mx-auto">
-              Join thousands of users who've already improved their AI interactions with BetterSaid.
+              Join thousands of users who&apos;ve already improved their AI interactions with BetterSaid.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <SignUpButton mode="modal">
