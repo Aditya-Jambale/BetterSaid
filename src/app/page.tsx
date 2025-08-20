@@ -593,11 +593,250 @@ export default function Home() {
       {/* Conditional content based on authentication */}
       <SignedIn>
         {/* Demo Section - Only for authenticated users */}
-        <section id="demo" className="py-16 bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <section id="demo" className="py-16 bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-[100dvh]">
           <div className="container mx-auto px-4">
-            <div className="flex gap-8 max-w-7xl mx-auto">
-            {/* History Sidebar */}
-            <div className="w-80 h-[600px] flex flex-col">
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-12 max-w-7xl mx-auto">
+            
+            {/* Main Editor - Order 1 on mobile, 1 on tablet, 2 on desktop */}
+            <main className="order-1 md:order-1 xl:order-2 md:col-span-2 xl:col-span-6 min-w-0">
+              {/* Input Section - Always visible when no enhanced prompt */}
+              {!enhancedPrompt && !isEnhancing && (
+                <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm overflow-hidden mb-8">
+                  <CardHeader className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border-b border-purple-100 dark:border-purple-800">
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                        <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      Your Prompt
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                    <div className="relative">
+                      <Textarea
+                        placeholder="Enter your prompt here... (e.g., 'Write a blog post about AI')"
+                        value={inputPrompt}
+                        onChange={(e) => setInputPrompt(e.target.value)}
+                        className="resize-vertical border-gray-200 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500 bg-gray-50/50 dark:bg-gray-900/50 text-base md:text-[17px] leading-relaxed w-full min-h-48 md:min-h-64"
+                      />
+                      <div className="absolute bottom-3 right-3 text-xs text-gray-400">
+                        {inputPrompt.length} characters
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={handleEnhance}
+                      disabled={isLoading || !inputPrompt.trim()}
+                      className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium text-base shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Preparing Enhancement...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-5 w-5" />
+                          Enhance Prompt
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Show upgrade prompt when needed */}
+              {showUpgradePrompt?.show && (
+                <div className="mb-6">
+                  <UpgradePrompt 
+                    currentPlan={showUpgradePrompt.currentPlan}
+                    reason={showUpgradePrompt.reason}
+                    onClose={() => setShowUpgradePrompt(null)}
+                  />
+                </div>
+              )}
+
+              {/* Enhanced Prompt Results */}
+              {(isLoading || isEnhancing || enhancedPrompt || improvements.length > 0) && (
+                <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm overflow-hidden flex flex-col min-h-0">
+                  <CardHeader className={`border-b transition-all duration-500 flex-shrink-0 ${
+                    isEnhancing 
+                      ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-emerald-200 dark:border-emerald-700' 
+                      : enhancedPrompt 
+                        ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-100 dark:border-emerald-800'
+                        : 'bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border-purple-100 dark:border-purple-800'
+                  }`}>
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-500 ${
+                        isEnhancing
+                          ? 'bg-emerald-200 dark:bg-emerald-800 animate-pulse'
+                          : enhancedPrompt
+                            ? 'bg-emerald-100 dark:bg-emerald-900'
+                            : 'bg-purple-100 dark:bg-purple-900'
+                      }`}>
+                        {isEnhancing ? (
+                          <Loader2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 animate-spin" />
+                        ) : enhancedPrompt ? (
+                          <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        )}
+                      </div>
+                      <span className="transition-all duration-500">
+                        {isEnhancing 
+                          ? 'AI is enhancing your prompt...' 
+                          : enhancedPrompt 
+                            ? 'Enhanced Prompt' 
+                            : 'Your Prompt'
+                        }
+                      </span>
+                      {isEnhancing && (
+                        <div className="ml-auto flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                          <div className="flex space-x-1">
+                            <div className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce [animation-delay:0ms]"></div>
+                            <div className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce [animation-delay:150ms]"></div>
+                            <div className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce [animation-delay:300ms]"></div>
+                          </div>
+                          <span className="font-medium">Enhancing</span>
+                        </div>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 flex-1 flex flex-col min-h-0">
+                    <div className="relative flex-1 min-h-0 mb-6">
+                      <Textarea
+                        placeholder="Enter your prompt here... (e.g., 'Write a blog post about AI')"
+                        value={isEnhancing ? displayedText : (enhancedPrompt || inputPrompt)}
+                        onChange={(e) => {
+                          if (!isEnhancing && !enhancedPrompt) {
+                            setInputPrompt(e.target.value);
+                          }
+                        }}
+                        readOnly={isEnhancing || !!enhancedPrompt}
+                        className={`resize-vertical transition-all duration-300 text-base md:text-[17px] leading-relaxed w-full min-h-48 md:min-h-64 overflow-y-auto ${
+                          isEnhancing 
+                            ? 'border-emerald-300 dark:border-emerald-600 bg-emerald-50/50 dark:bg-emerald-900/20 cursor-default'
+                            : enhancedPrompt
+                              ? 'border-emerald-200 dark:border-emerald-700 bg-emerald-50/30 dark:bg-emerald-900/10 cursor-default'
+                              : 'border-gray-200 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500 bg-gray-50/50 dark:bg-gray-900/50'
+                        }`}
+                      />
+                      <div className="absolute bottom-3 right-3 text-xs text-gray-400 pointer-events-none bg-white/80 dark:bg-gray-800/80 rounded px-1">
+                        {(isEnhancing ? displayedText : (enhancedPrompt || inputPrompt)).length} characters
+                      </div>
+                      {isEnhancing && (
+                        <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 bg-emerald-100/90 dark:bg-emerald-900/90 backdrop-blur-sm rounded-full border border-emerald-200 dark:border-emerald-700 shadow-sm pointer-events-none">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Live Enhancement in Progress</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-3 flex-shrink-0">
+                      {!enhancedPrompt && !isEnhancing && (
+                        <Button 
+                          onClick={handleEnhance}
+                          disabled={isLoading || !inputPrompt.trim()}
+                          className="flex-1 h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium text-base shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                              Preparing Enhancement...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="mr-2 h-5 w-5" />
+                              Enhance Prompt
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      
+                      {(enhancedPrompt || isEnhancing) && (
+                        <>
+                          <Button
+                            onClick={handleCopyToClipboard}
+                            disabled={!enhancedPrompt || isEnhancing}
+                            variant="outline"
+                            className="flex-1 h-12 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 text-emerald-700 dark:text-emerald-400 font-medium text-base transition-all duration-200 disabled:opacity-50"
+                          >
+                            {hasCopied ? (
+                              <>
+                                <Check className="mr-2 h-5 w-5 text-emerald-600" />
+                                Copied to Clipboard!
+                              </>
+                            ) : (
+                              <>
+                                <Clipboard className="mr-2 h-5 w-5" />
+                                Copy Enhanced Prompt
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setInputPrompt('');
+                              setEnhancedPrompt('');
+                              setDisplayedText('');
+                              setImprovements([]);
+                              setError(null);
+                              setHasCopied(false);
+                              setIsEnhancing(false);
+                            }}
+                            variant="outline"
+                            className="h-12 px-6 border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-700 dark:text-gray-400 font-medium transition-all duration-200"
+                          >
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            New Prompt
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Error Display */}
+              {error && (
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border-red-200 dark:border-red-800 mt-6">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg className="h-4 w-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-red-800 dark:text-red-200 mb-1">Enhancement Failed</h3>
+                        <p className="text-red-700 dark:text-red-300 text-sm leading-relaxed">{error}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </main>
+
+            {/* Key Improvements - Order 2 on mobile, 3 on tablet, 3 on desktop */}
+            <aside className="order-2 md:order-3 xl:order-3 md:col-span-1 xl:col-span-3 min-w-0">
+              {(isLoading || isEnhancing || enhancedPrompt || improvements.length > 0) && (
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 backdrop-blur-sm overflow-hidden flex flex-col">
+                  <CardHeader className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-b border-amber-200 dark:border-amber-700 flex-shrink-0">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
+                        <Lightbulb className="h-4 w-4 text-white" />
+                      </div>
+                      <span className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent font-bold">
+                        Key Improvements
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 flex-1 flex flex-col min-h-0 max-h-96 md:max-h-none overflow-auto">
+                    {renderImprovementsContent()}
+                  </CardContent>
+                </Card>
+              )}
+            </aside>
+
+            {/* History Sidebar - Order 3 on mobile, 2 on tablet, 1 on desktop */}
+            <aside className="order-3 md:order-2 xl:order-1 md:col-span-1 xl:col-span-3 min-w-0">
               {/* Usage Display - Show plan info and usage limits */}
               <SignedIn>
                 <div className="mb-4 flex-shrink-0">
@@ -610,7 +849,7 @@ export default function Home() {
                 </div>
               </SignedIn>
               
-              <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex-1 flex flex-col min-h-0">
+              <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col min-h-0">
                 <CardHeader className="pb-4 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -634,7 +873,7 @@ export default function Home() {
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                  <div className="space-y-3 overflow-y-auto flex-1 pr-2">
+                  <div className="space-y-3 overflow-y-auto flex-1 pr-2 max-h-96 md:max-h-none">
                     <ClientOnly fallback={
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
@@ -700,249 +939,7 @@ export default function Home() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-
-            {/* Main Content */}
-            <div className="flex-1">
-              {/* Input Section - Always visible when no enhanced prompt */}
-              {!enhancedPrompt && !isEnhancing && (
-                <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm overflow-hidden mb-8">
-                  <CardHeader className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border-b border-purple-100 dark:border-purple-800">
-                    <CardTitle className="text-xl flex items-center gap-2">
-                      <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                        <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      Your Prompt
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-6">
-                    <div className="relative">
-                      <Textarea
-                        placeholder="Enter your prompt here... (e.g., 'Write a blog post about AI')"
-                        value={inputPrompt}
-                        onChange={(e) => setInputPrompt(e.target.value)}
-                        rows={8}
-                        className="resize-none border-gray-200 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500 bg-gray-50/50 dark:bg-gray-900/50 text-base leading-relaxed"
-                      />
-                      <div className="absolute bottom-3 right-3 text-xs text-gray-400">
-                        {inputPrompt.length} characters
-                      </div>
-                    </div>
-                    <Button 
-                      onClick={handleEnhance}
-                      disabled={isLoading || !inputPrompt.trim()}
-                      className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium text-base shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                          Preparing Enhancement...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="mr-2 h-5 w-5" />
-                          Enhance Prompt
-                        </>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Show upgrade prompt when needed */}
-              {showUpgradePrompt?.show && (
-                <div className="mb-6">
-                  <UpgradePrompt 
-                    currentPlan={showUpgradePrompt.currentPlan}
-                    reason={showUpgradePrompt.reason}
-                    onClose={() => setShowUpgradePrompt(null)}
-                  />
-                </div>
-              )}
-
-              {/* Results Section - Only show when there's content */}
-              {(isLoading || isEnhancing || enhancedPrompt || improvements.length > 0) && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Prompt Area - Takes 2/3 */}
-                <div className="lg:col-span-2">
-                  <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm overflow-hidden h-[600px] flex flex-col">
-                    <CardHeader className={`border-b transition-all duration-500 flex-shrink-0 ${
-                      isEnhancing 
-                        ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-emerald-200 dark:border-emerald-700' 
-                        : enhancedPrompt 
-                          ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-100 dark:border-emerald-800'
-                          : 'bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border-purple-100 dark:border-purple-800'
-                    }`}>
-                      <CardTitle className="text-xl flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-500 ${
-                          isEnhancing
-                            ? 'bg-emerald-200 dark:bg-emerald-800 animate-pulse'
-                            : enhancedPrompt
-                              ? 'bg-emerald-100 dark:bg-emerald-900'
-                              : 'bg-purple-100 dark:bg-purple-900'
-                        }`}>
-                          {isEnhancing ? (
-                            <Loader2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 animate-spin" />
-                          ) : enhancedPrompt ? (
-                            <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                          ) : (
-                            <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                          )}
-                        </div>
-                        <span className="transition-all duration-500">
-                          {isEnhancing 
-                            ? 'AI is enhancing your prompt...' 
-                            : enhancedPrompt 
-                              ? 'Enhanced Prompt' 
-                              : 'Your Prompt'
-                          }
-                        </span>
-                        {isEnhancing && (
-                          <div className="ml-auto flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
-                            <div className="flex space-x-1">
-                              <div className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce [animation-delay:0ms]"></div>
-                              <div className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce [animation-delay:150ms]"></div>
-                              <div className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce [animation-delay:300ms]"></div>
-                            </div>
-                            <span className="font-medium">Enhancing</span>
-                          </div>
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 flex-1 flex flex-col min-h-0">
-                      <div className="relative flex-1 min-h-0 mb-6">
-                        <Textarea
-                          placeholder="Enter your prompt here... (e.g., 'Write a blog post about AI')"
-                          value={isEnhancing ? displayedText : (enhancedPrompt || inputPrompt)}
-                          onChange={(e) => {
-                            if (!isEnhancing && !enhancedPrompt) {
-                              setInputPrompt(e.target.value);
-                            }
-                          }}
-                          readOnly={isEnhancing || !!enhancedPrompt}
-                          className={`resize-none transition-all duration-300 text-base leading-relaxed w-full h-full overflow-y-auto ${
-                            isEnhancing 
-                              ? 'border-emerald-300 dark:border-emerald-600 bg-emerald-50/50 dark:bg-emerald-900/20 cursor-default'
-                              : enhancedPrompt
-                                ? 'border-emerald-200 dark:border-emerald-700 bg-emerald-50/30 dark:bg-emerald-900/10 cursor-default'
-                                : 'border-gray-200 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500 bg-gray-50/50 dark:bg-gray-900/50'
-                          }`}
-                        />
-                        <div className="absolute bottom-3 right-3 text-xs text-gray-400 pointer-events-none bg-white/80 dark:bg-gray-800/80 rounded px-1">
-                          {(isEnhancing ? displayedText : (enhancedPrompt || inputPrompt)).length} characters
-                        </div>
-                        {isEnhancing && (
-                          <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 bg-emerald-100/90 dark:bg-emerald-900/90 backdrop-blur-sm rounded-full border border-emerald-200 dark:border-emerald-700 shadow-sm pointer-events-none">
-                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Live Enhancement in Progress</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex gap-3 flex-shrink-0">
-                        {!enhancedPrompt && !isEnhancing && (
-                          <Button 
-                            onClick={handleEnhance}
-                            disabled={isLoading || !inputPrompt.trim()}
-                            className="flex-1 h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium text-base shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
-                          >
-                            {isLoading ? (
-                              <>
-                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                Preparing Enhancement...
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="mr-2 h-5 w-5" />
-                                Enhance Prompt
-                              </>
-                            )}
-                          </Button>
-                        )}
-                        
-                        {(enhancedPrompt || isEnhancing) && (
-                          <>
-                            <Button
-                              onClick={handleCopyToClipboard}
-                              disabled={!enhancedPrompt || isEnhancing}
-                              variant="outline"
-                              className="flex-1 h-12 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 text-emerald-700 dark:text-emerald-400 font-medium text-base transition-all duration-200 disabled:opacity-50"
-                            >
-                              {hasCopied ? (
-                                <>
-                                  <Check className="mr-2 h-5 w-5 text-emerald-600" />
-                                  Copied to Clipboard!
-                                </>
-                              ) : (
-                                <>
-                                  <Clipboard className="mr-2 h-5 w-5" />
-                                  Copy Enhanced Prompt
-                                </>
-                              )}
-                            </Button>
-                            <Button
-                              onClick={() => {
-                                setInputPrompt('');
-                                setEnhancedPrompt('');
-                                setDisplayedText('');
-                                setImprovements([]);
-                                setError(null);
-                                setHasCopied(false);
-                                setIsEnhancing(false);
-                              }}
-                              variant="outline"
-                              className="h-12 px-6 border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-700 dark:text-gray-400 font-medium transition-all duration-200"
-                            >
-                              <Sparkles className="mr-2 h-4 w-4" />
-                              New Prompt
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                  {/* Key Improvements - Takes 1/3 with fixed height */}
-                  <div className="lg:col-span-1">
-                    <Card className="border-0 shadow-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 backdrop-blur-sm overflow-hidden h-[600px] flex flex-col">
-                      <CardHeader className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-b border-amber-200 dark:border-amber-700 flex-shrink-0">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
-                            <Lightbulb className="h-4 w-4 text-white" />
-                          </div>
-                          <span className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent font-bold">
-                            Key Improvements
-                          </span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-4 flex-1 flex flex-col min-h-0">
-                        {renderImprovementsContent()}
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              )}
-
-              {/* Error Display */}
-              {error && (
-                <Card className="border-0 shadow-xl bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border-red-200 dark:border-red-800 mt-6">
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <svg className="h-4 w-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-red-800 dark:text-red-200 mb-1">Enhancement Failed</h3>
-                        <p className="text-red-700 dark:text-red-300 text-sm leading-relaxed">{error}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            </aside>
           </div>
           </div>
         </section>

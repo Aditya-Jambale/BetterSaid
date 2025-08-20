@@ -19,6 +19,12 @@ export const metadata: Metadata = {
   description: "Transform your prompts into powerful, detailed instructions for AI",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
