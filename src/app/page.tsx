@@ -22,6 +22,7 @@ import {
 } from '@clerk/nextjs';
 import Link from 'next/link';
 import { BackgroundGradientAnimation } from '@/components/ui/background-gradient-animation';
+import { X } from 'lucide-react';
 
 export default function Home() {
   // Get user info from Clerk
@@ -52,6 +53,7 @@ export default function Home() {
   } | null>(null);
   const { history, isLoading: historyLoading, addHistoryItem, deleteHistoryItem, clearHistory } = useChatHistory();
   const { hasLocalData, migrateData } = useMigration();
+  const [showMobileHistory, setShowMobileHistory] = useState(false);
 
   // Automatic migration from localStorage to Supabase
   useEffect(() => {
@@ -593,12 +595,29 @@ export default function Home() {
       {/* Conditional content based on authentication */}
       <SignedIn>
         {/* Demo Section - Only for authenticated users */}
-        <section id="demo" className="py-16 bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-[100dvh]">
+    <section id="demo" className="py-16 bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-[100dvh]">
           <div className="container mx-auto px-4">
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-12 max-w-7xl mx-auto">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-12 max-w-7xl mx-auto xl:items-stretch">
             
             {/* Main Editor - Order 1 on mobile, 1 on tablet, 2 on desktop */}
-            <main className="order-1 md:order-1 xl:order-2 md:col-span-2 xl:col-span-6 min-w-0">
+            <main className="order-1 md:order-1 xl:order-2 md:col-span-2 xl:col-span-6 min-w-0 xl:flex xl:flex-col xl:min-h-0 relative">
+              {/* Floating mobile history button */}
+              <div className="md:hidden fixed bottom-20 right-4 z-40 drop-shadow-lg">
+                <Button size="sm" variant="outline" onClick={() => setShowMobileHistory(true)} className="h-10 px-4 rounded-full border-purple-300 bg-white/90 backdrop-blur text-sm font-medium flex items-center gap-2">
+                  <Clock className="h-4 w-4" /> History
+                </Button>
+              </div>
+              {/* Mobile-only plan & usage above enhanced prompt */}
+              <SignedIn>
+                <div className="mb-4 md:hidden">
+                  <UsageDisplay planInfo={planInfo ? {
+                    currentUsage: planInfo.currentUsage || 0,
+                    monthlyLimit: planInfo.monthlyLimit,
+                    remainingUsage: planInfo.remainingUsage,
+                    currentPlan: planInfo.currentPlan
+                  } : undefined} />
+                </div>
+              </SignedIn>
               {/* Input Section - Always visible when no enhanced prompt */}
               {!enhancedPrompt && !isEnhancing && (
                 <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm overflow-hidden mb-8">
@@ -656,7 +675,7 @@ export default function Home() {
 
               {/* Enhanced Prompt Results */}
               {(isLoading || isEnhancing || enhancedPrompt || improvements.length > 0) && (
-                <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm overflow-hidden flex flex-col min-h-0">
+                <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col min-h-0 max-h-[calc(100svh-7rem)] md:max-h-none xl:h-[620px]">
                   <CardHeader className={`border-b transition-all duration-500 flex-shrink-0 ${
                     isEnhancing 
                       ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-emerald-200 dark:border-emerald-700' 
@@ -700,8 +719,9 @@ export default function Home() {
                       )}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6 flex-1 flex flex-col min-h-0">
-                    <div className="relative flex-1 min-h-0 mb-6">
+                  <CardContent className="p-0 flex flex-col min-h-0 flex-1">
+                    {/* Scrollable body */}
+                    <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pt-4 pb-6">
                       <Textarea
                         placeholder="Enter your prompt here... (e.g., 'Write a blog post about AI')"
                         value={isEnhancing ? displayedText : (enhancedPrompt || inputPrompt)}
@@ -730,9 +750,10 @@ export default function Home() {
                       )}
                     </div>
                     
-                    <div className="flex gap-3 flex-shrink-0">
-                      {!enhancedPrompt && !isEnhancing && (
-                        <Button 
+                    {/* Footer action bar (non-scroll, always visible) */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm flex gap-3 flex-shrink-0">
+                      {(!enhancedPrompt && !isEnhancing) && (
+                        <Button
                           onClick={handleEnhance}
                           disabled={isLoading || !inputPrompt.trim()}
                           className="flex-1 h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium text-base shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
@@ -750,7 +771,6 @@ export default function Home() {
                           )}
                         </Button>
                       )}
-                      
                       {(enhancedPrompt || isEnhancing) && (
                         <>
                           <Button
@@ -767,7 +787,7 @@ export default function Home() {
                             ) : (
                               <>
                                 <Clipboard className="mr-2 h-5 w-5" />
-                                Copy Enhanced Prompt
+                                Copy Prompt
                               </>
                             )}
                           </Button>
@@ -782,7 +802,7 @@ export default function Home() {
                               setIsEnhancing(false);
                             }}
                             variant="outline"
-                            className="h-12 px-6 border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-700 dark:text-gray-400 font-medium transition-all duration-200"
+                            className="flex-1 h-12 border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-700 dark:text-gray-400 font-medium transition-all duration-200"
                           >
                             <Sparkles className="mr-2 h-4 w-4" />
                             New Prompt
@@ -814,10 +834,63 @@ export default function Home() {
               )}
             </main>
 
+            {/* Mobile History Drawer */}
+            {showMobileHistory && (
+              <div className="md:hidden fixed inset-0 z-50">
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowMobileHistory(false)} />
+                <div className="absolute bottom-0 left-0 right-0 max-h-[80vh] rounded-t-2xl bg-white dark:bg-gray-900 shadow-2xl flex flex-col border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 className="text-sm font-semibold flex items-center gap-2"><Clock className="h-4 w-4" /> Recent History</h2>
+                    <div className="flex items-center gap-2">
+                      {history.length > 0 && (
+                        <Button size="xs" variant="ghost" className="text-xs text-red-500" onClick={() => { clearHistory().catch(()=>toast.error('Failed to clear history')); }}>
+                          Clear
+                        </Button>
+                      )}
+                      <Button size="icon" variant="ghost" onClick={() => setShowMobileHistory(false)} aria-label="Close history">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+                    {historyLoading ? (
+                      <div className="flex items-center justify-center py-10 text-sm text-gray-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...</div>
+                    ) : history.length === 0 ? (
+                      <div className="text-center py-10 text-xs text-gray-500">No history yet</div>
+                    ) : (
+                      history.map(item => (
+                        <div key={item.id} className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 hover:border-purple-300 transition group">
+                          <button className="w-full text-left" onClick={() => {
+                            setInputPrompt(item.original);
+                            setEnhancedPrompt(item.enhanced);
+                            setImprovements(Array.isArray(item.improvements) ? item.improvements : []);
+                            setShowMobileHistory(false);
+                          }}>
+                            <p className="text-xs font-medium truncate text-gray-700 dark:text-gray-300 group-hover:text-purple-600">{item.original}</p>
+                          </button>
+                          <div className="mt-2 flex justify-between items-center gap-2">
+                            <span className="text-[10px] text-gray-400 flex-1 truncate">{new Date(item.created_at).toLocaleString()}</span>
+                            <div className="flex items-center gap-1">
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { navigator.clipboard.writeText(item.enhanced || item.original); toast.success('Copied'); }}>
+                                <Clipboard className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={() => { deleteHistoryItem(item.id).catch(()=>toast.error('Failed')); }}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Key Improvements - Order 2 on mobile, 3 on tablet, 3 on desktop */}
-            <aside className="order-2 md:order-3 xl:order-3 md:col-span-1 xl:col-span-3 min-w-0">
+      <aside className="order-2 md:order-3 xl:order-3 md:col-span-1 xl:col-span-3 min-w-0 xl:flex xl:flex-col xl:h-[620px]">
               {(isLoading || isEnhancing || enhancedPrompt || improvements.length > 0) && (
-                <Card className="border-0 shadow-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 backdrop-blur-sm overflow-hidden flex flex-col">
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 backdrop-blur-sm overflow-hidden flex flex-col max-h-[70vh] xl:h-[620px]">
                   <CardHeader className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-b border-amber-200 dark:border-amber-700 flex-shrink-0">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
@@ -828,7 +901,7 @@ export default function Home() {
                       </span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4 flex-1 flex flex-col min-h-0 max-h-96 md:max-h-none overflow-auto">
+                  <CardContent className="p-4 flex-1 flex flex-col min-h-0 max-h-96 md:max-h-none xl:max-h-[560px] xl:overflow-y-auto overflow-auto">
                     {renderImprovementsContent()}
                   </CardContent>
                 </Card>
@@ -836,10 +909,10 @@ export default function Home() {
             </aside>
 
             {/* History Sidebar - Order 3 on mobile, 2 on tablet, 1 on desktop */}
-            <aside className="order-3 md:order-2 xl:order-1 md:col-span-1 xl:col-span-3 min-w-0">
-              {/* Usage Display - Show plan info and usage limits */}
+            <aside className="order-3 md:order-2 xl:order-1 md:col-span-1 xl:col-span-3 min-w-0 xl:flex xl:flex-col xl:space-y-4 xl:h-[620px]">
+              {/* Usage Display - Show plan info and usage limits (desktop stacked) */}
               <SignedIn>
-                <div className="mb-4 flex-shrink-0">
+                <div className="flex-shrink-0 hidden md:block">
                   <UsageDisplay planInfo={planInfo ? {
                     currentUsage: planInfo.currentUsage || 0,
                     monthlyLimit: planInfo.monthlyLimit,
@@ -849,7 +922,7 @@ export default function Home() {
                 </div>
               </SignedIn>
               
-              <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col min-h-0">
+              <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col min-h-0 max-h-[70vh] xl:flex-1 xl:min-h-0">
                 <CardHeader className="pb-4 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -872,8 +945,8 @@ export default function Home() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                  <div className="space-y-3 overflow-y-auto flex-1 pr-2 max-h-96 md:max-h-none">
+                <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col xl:min-h-0">
+                  <div className="space-y-3 overflow-y-auto flex-1 pr-2">
                     <ClientOnly fallback={
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
