@@ -266,13 +266,21 @@ export default function Home() {
     try {
       console.log('Sending request to enhance API with prompt:', inputPrompt.substring(0, 100) + '...');
       
-      const response = await fetch('/api/enhance', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt: inputPrompt }),
-      });
+      let response: Response;
+      try {
+        response = await fetch('/api/enhance', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt: inputPrompt }),
+        });
+      } catch (networkErr) {
+        console.error('Network-level fetch failure calling /api/enhance:', networkErr);
+        setError('Network error contacting enhancement API. Check that the dev server is running and no middleware/auth is blocking the request.');
+        setIsLoading(false);
+        return;
+      }
 
       console.log('Response status:', response.status);
       console.log('Response headers:', Object.fromEntries(response.headers.entries()));
@@ -439,21 +447,21 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-purple-200/50 dark:border-purple-800/50">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
+  <div className="container mx-auto px-4 max-w-full overflow-x-hidden">
+            <div className="flex items-center justify-between h-16">
             {/* Logo and Brand */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <div className="relative">
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                   <Sparkles className="h-6 w-6 text-white" />
                 </div>
                 <div className="absolute -inset-1 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl blur opacity-20 animate-pulse"></div>
               </div>
-              <div>
+              <div className="min-w-0">
                 <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
                   BetterSaid
                 </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">AI Prompt Enhancement</p>
+                <p className="hidden sm:block text-xs text-gray-500 dark:text-gray-400 -mt-1">AI Prompt Enhancement</p>
               </div>
             </div>
 
@@ -474,7 +482,7 @@ export default function Home() {
             </div>
 
             {/* Auth Buttons */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <SignedIn>
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -493,19 +501,19 @@ export default function Home() {
               </SignedIn>
               <SignedOut>
                 <SignInButton mode="modal">
-                  <Button 
-                    variant="ghost" 
-                    className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 font-medium"
+                  <Button
+                    variant="ghost"
+                    className="text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 font-medium text-sm px-2 sm:px-3 h-9"
                   >
                     Login
                   </Button>
                 </SignInButton>
                 <SignUpButton mode="modal">
-                  <Button 
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+                  <Button
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200 text-sm sm:text-base px-3 sm:px-5 h-9 sm:h-10 whitespace-nowrap"
                   >
-                    Sign Up Free
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                    <span className="sm:inline">Sign Up Free</span>
+                    <ArrowRight className="w-4 h-4 ml-1 sm:ml-2 hidden sm:inline" />
                   </Button>
                 </SignUpButton>
               </SignedOut>
@@ -515,7 +523,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative h-[70vh] overflow-hidden">
+      <section className="relative h-[62vh] sm:h-[70vh] overflow-hidden max-w-full">
         <BackgroundGradientAnimation
           gradientBackgroundStart="rgb(0, 0, 0)"
           gradientBackgroundEnd="rgb(20, 20, 30)"
@@ -529,9 +537,10 @@ export default function Home() {
           blendingValue="hard-light"
           containerClassName="absolute inset-0"
           interactive={true}
+          fullScreen={false}
         >
           {/* Hero Content */}
-          <div className="relative z-10 container mx-auto px-4 py-16 h-full flex items-center">
+          <div className="relative z-10 container mx-auto px-4 py-16 h-full flex items-center max-w-full overflow-x-hidden">
             <div className="max-w-4xl mx-auto text-center w-full">
               {/* Logo and Title on Same Line */}
               <div className="mb-8">
@@ -675,7 +684,8 @@ export default function Home() {
 
               {/* Enhanced Prompt Results */}
               {(isLoading || isEnhancing || enhancedPrompt || improvements.length > 0) && (
-                <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col min-h-0 max-h-[calc(100svh-7rem)] md:max-h-none xl:h-[620px]">
+                // Enhanced Prompt Card - mobile auto height, desktop fixed
+                <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col min-h-0 md:max-h-none xl:h-[620px]">
                   <CardHeader className={`border-b transition-all duration-500 flex-shrink-0 ${
                     isEnhancing 
                       ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-emerald-200 dark:border-emerald-700' 
@@ -721,37 +731,39 @@ export default function Home() {
                   </CardHeader>
                   <CardContent className="p-0 flex flex-col min-h-0 flex-1">
                     {/* Scrollable body */}
-                    <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pt-4 pb-6">
-                      <Textarea
-                        placeholder="Enter your prompt here... (e.g., 'Write a blog post about AI')"
-                        value={isEnhancing ? displayedText : (enhancedPrompt || inputPrompt)}
-                        onChange={(e) => {
-                          if (!isEnhancing && !enhancedPrompt) {
-                            setInputPrompt(e.target.value);
-                          }
-                        }}
-                        readOnly={isEnhancing || !!enhancedPrompt}
-                        className={`resize-vertical transition-all duration-300 text-base md:text-[17px] leading-relaxed w-full min-h-48 md:min-h-64 overflow-y-auto ${
-                          isEnhancing 
-                            ? 'border-emerald-300 dark:border-emerald-600 bg-emerald-50/50 dark:bg-emerald-900/20 cursor-default'
-                            : enhancedPrompt
-                              ? 'border-emerald-200 dark:border-emerald-700 bg-emerald-50/30 dark:bg-emerald-900/10 cursor-default'
-                              : 'border-gray-200 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500 bg-gray-50/50 dark:bg-gray-900/50'
-                        }`}
-                      />
-                      <div className="absolute bottom-3 right-3 text-xs text-gray-400 pointer-events-none bg-white/80 dark:bg-gray-800/80 rounded px-1">
-                        {(isEnhancing ? displayedText : (enhancedPrompt || inputPrompt)).length} characters
-                      </div>
-                      {isEnhancing && (
-                        <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 bg-emerald-100/90 dark:bg-emerald-900/90 backdrop-blur-sm rounded-full border border-emerald-200 dark:border-emerald-700 shadow-sm pointer-events-none">
-                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Live Enhancement in Progress</span>
+                    <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pt-4 pb-6 flex flex-col max-h-[55vh] sm:max-h-[60vh] md:max-h-none scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+                      <div className="relative flex-1 flex min-h-0">
+                        <Textarea
+                          placeholder="Enter your prompt here... (e.g., 'Write a blog post about AI')"
+                          value={isEnhancing ? displayedText : (enhancedPrompt || inputPrompt)}
+                          onChange={(e) => {
+                            if (!isEnhancing && !enhancedPrompt) {
+                              setInputPrompt(e.target.value);
+                            }
+                          }}
+                          readOnly={isEnhancing || !!enhancedPrompt}
+                          className={`transition-all duration-300 text-base md:text-[17px] leading-relaxed w-full h-full resize-none overflow-y-auto rounded-md ${
+                            isEnhancing 
+                              ? 'border-emerald-300 dark:border-emerald-600 bg-emerald-50/50 dark:bg-emerald-900/20 cursor-default'
+                              : enhancedPrompt
+                                ? 'border-emerald-200 dark:border-emerald-700 bg-emerald-50/30 dark:bg-emerald-900/10 cursor-default'
+                                : 'border-gray-200 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500 bg-gray-50/50 dark:bg-gray-900/50'
+                          }`}
+                        />
+                        <div className="absolute bottom-3 right-3 text-xs text-gray-400 pointer-events-none bg-white/80 dark:bg-gray-800/80 rounded px-1">
+                          {(isEnhancing ? displayedText : (enhancedPrompt || inputPrompt)).length} characters
                         </div>
-                      )}
+                        {isEnhancing && (
+                          <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 bg-emerald-100/90 dark:bg-emerald-900/90 backdrop-blur-sm rounded-full border border-emerald-200 dark:border-emerald-700 shadow-sm pointer-events-none">
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Live Enhancement in Progress</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Footer action bar (non-scroll, always visible) */}
-                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm flex gap-3 flex-shrink-0">
+                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm flex gap-3 flex-shrink-0">
                       {(!enhancedPrompt && !isEnhancing) && (
                         <Button
                           onClick={handleEnhance}
@@ -771,11 +783,21 @@ export default function Home() {
                           )}
                         </Button>
                       )}
-                      {(enhancedPrompt || isEnhancing) && (
+                      {isEnhancing && (
+                        <Button
+                          disabled
+                          variant="outline"
+                          className="flex-1 h-12 border-emerald-300 bg-emerald-50/60 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-medium text-base flex items-center justify-center gap-2 cursor-wait"
+                        >
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Enhancing...
+                        </Button>
+                      )}
+                      {(enhancedPrompt && !isEnhancing) && (
                         <>
                           <Button
                             onClick={handleCopyToClipboard}
-                            disabled={!enhancedPrompt || isEnhancing}
+                            disabled={!enhancedPrompt}
                             variant="outline"
                             className="flex-1 h-12 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 text-emerald-700 dark:text-emerald-400 font-medium text-base transition-all duration-200 disabled:opacity-50"
                           >
@@ -843,7 +865,7 @@ export default function Home() {
                     <h2 className="text-sm font-semibold flex items-center gap-2"><Clock className="h-4 w-4" /> Recent History</h2>
                     <div className="flex items-center gap-2">
                       {history.length > 0 && (
-                        <Button size="xs" variant="ghost" className="text-xs text-red-500" onClick={() => { clearHistory().catch(()=>toast.error('Failed to clear history')); }}>
+                        <Button size="sm" variant="ghost" className="text-[10px] h-6 text-red-500" onClick={() => { clearHistory().catch(()=>toast.error('Failed to clear history')); }}>
                           Clear
                         </Button>
                       )}
@@ -869,7 +891,7 @@ export default function Home() {
                             <p className="text-xs font-medium truncate text-gray-700 dark:text-gray-300 group-hover:text-purple-600">{item.original}</p>
                           </button>
                           <div className="mt-2 flex justify-between items-center gap-2">
-                            <span className="text-[10px] text-gray-400 flex-1 truncate">{new Date(item.created_at).toLocaleString()}</span>
+                            <span className="text-[10px] text-gray-400 flex-1 truncate">{item.created_at ? new Date(item.created_at).toLocaleString() : ''}</span>
                             <div className="flex items-center gap-1">
                               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { navigator.clipboard.writeText(item.enhanced || item.original); toast.success('Copied'); }}>
                                 <Clipboard className="h-3.5 w-3.5" />
@@ -890,7 +912,8 @@ export default function Home() {
             {/* Key Improvements - Order 2 on mobile, 3 on tablet, 3 on desktop */}
       <aside className="order-2 md:order-3 xl:order-3 md:col-span-1 xl:col-span-3 min-w-0 xl:flex xl:flex-col xl:h-[620px]">
               {(isLoading || isEnhancing || enhancedPrompt || improvements.length > 0) && (
-                <Card className="border-0 shadow-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 backdrop-blur-sm overflow-hidden flex flex-col max-h-[70vh] xl:h-[620px]">
+                // Improvements Card - mobile flows naturally, desktop fixed height
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 backdrop-blur-sm overflow-hidden flex flex-col min-h-0 md:max-h-none xl:h-[620px] mt-6 md:mt-0">
                   <CardHeader className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-b border-amber-200 dark:border-amber-700 flex-shrink-0">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
@@ -901,8 +924,10 @@ export default function Home() {
                       </span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4 flex-1 flex flex-col min-h-0 max-h-96 md:max-h-none xl:max-h-[560px] xl:overflow-y-auto overflow-auto">
-                    {renderImprovementsContent()}
+                  <CardContent className="p-4 flex flex-col flex-1 min-h-0 overflow-visible md:overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-visible md:overflow-y-auto pr-1">
+                      {renderImprovementsContent()}
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -1486,7 +1511,7 @@ export default function Home() {
         </div>
 
         {/* Pricing Section */}
-        <div className="py-20 bg-gradient-to-br from-purple-900 via-violet-900 to-indigo-900 relative overflow-hidden" id="pricing">
+  <div className="py-16 sm:py-20 bg-gradient-to-br from-purple-900 via-violet-900 to-indigo-900 relative overflow-hidden max-w-full" id="pricing">
           {/* Background Elements */}
           <div className="absolute inset-0 opacity-20">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.15)_1px,transparent_0)] bg-[size:20px_20px]"></div>
@@ -1497,7 +1522,7 @@ export default function Home() {
           <div className="absolute top-1/3 right-20 w-32 h-32 bg-gradient-to-r from-violet-400 to-purple-400 rounded-full blur-2xl opacity-20 animate-pulse delay-1000"></div>
           <div className="absolute bottom-20 left-1/4 w-24 h-24 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full blur-xl opacity-25 animate-pulse delay-2000"></div>
           
-          <div className="container mx-auto px-4 relative">
+          <div className="container mx-auto px-4 relative max-w-full overflow-x-hidden">
             {/* Page Title */}
             <div className="text-center mb-16">
               <div className="inline-block mb-4">
@@ -1505,7 +1530,7 @@ export default function Home() {
                   Pricing Plans
                 </span>
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
                 Simple, Transparent{' '}
                 <span className="bg-gradient-to-r from-purple-300 via-pink-300 to-violet-300 text-transparent bg-clip-text">
                   Pricing
@@ -1517,7 +1542,7 @@ export default function Home() {
             </div>
 
             {/* Features Overview */}
-            <div className="grid md:grid-cols-4 gap-8 mb-20">
+            <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mb-14 md:mb-20">
               <div className="text-center group">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300 shadow-lg">
                   <Zap className="w-8 h-8 text-white" />
@@ -1561,8 +1586,19 @@ export default function Home() {
                   </div>
                   
                   {/* Clerk Pricing Table - Full Width Container */}
-                  <div className="w-full overflow-x-auto overflow-y-visible bg-gray-50/30 rounded-2xl border border-gray-100/50 p-6 md:p-8">
-                    <div className="w-full min-w-max block">
+                  <div className="w-full bg-gray-50/30 rounded-xl md:rounded-2xl border border-gray-100/50 p-3 sm:p-4 md:p-8">
+                    {/* Mobile: horizontal scroll (no clipping); Desktop: normal full table */}
+                    <div className="sm:hidden">
+                      <div className="overflow-x-auto pb-2 snap-x snap-mandatory flex gap-4 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+                        <div className="min-w-[680px] snap-start">
+                          <PricingTable />
+                        </div>
+                      </div>
+                      <div className="mt-2 text-[11px] text-center text-gray-500 dark:text-gray-400">
+                        Swipe sideways to view all plan details
+                      </div>
+                    </div>
+                    <div className="hidden sm:block">
                       <PricingTable />
                     </div>
                   </div>
@@ -1571,9 +1607,9 @@ export default function Home() {
             </div>
 
             {/* Additional Features */}
-            <div className="mt-20 text-center">
-              <h3 className="text-3xl font-bold text-white mb-8">What&apos;s Included in All Plans</h3>
-              <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div className="mt-16 md:mt-20 text-center">
+              <h3 className="text-2xl sm:text-3xl font-bold text-white mb-6 sm:mb-8">What&apos;s Included in All Plans</h3>
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 max-w-4xl mx-auto">
                 <div className="flex items-center gap-3 text-purple-100 bg-white/10 backdrop-blur-sm rounded-lg p-4">
                   <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
                   <span className="font-medium">AI-powered prompt enhancement</span>

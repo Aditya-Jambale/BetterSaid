@@ -31,74 +31,77 @@ export class UsageService {
 
   static async getCurrentUsage(userId: string): Promise<number> {
     const monthYear = this.getCurrentMonthYear()
-    
-    const { data, error } = await supabase
-      .from('user_usage')
-      .select('usage_count')
-      .eq('user_id', userId)
-      .eq('month_year', monthYear)
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('user_usage')
+        .select('usage_count')
+        .eq('user_id', userId)
+        .eq('month_year', monthYear)
+        .single()
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-      console.error('Error fetching usage:', error)
-      throw error
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error fetching usage:', error)
+        return 0 // fallback silently (route will still enforce limits via default path)
+      }
+      return data?.usage_count || 0
+    } catch (e) {
+      console.error('Supabase usage lookup failed (fallback to 0):', e)
+      return 0
     }
-
-    return data?.usage_count || 0
   }
 
   static async incrementUsage(userId: string): Promise<number> {
     const monthYear = this.getCurrentMonthYear()
-    
-    // Try to update existing record
-    const { data: existingData, error: fetchError } = await supabase
-      .from('user_usage')
-      .select('usage_count')
-      .eq('user_id', userId)
-      .eq('month_year', monthYear)
-      .single()
-
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Error fetching usage for increment:', fetchError)
-      throw fetchError
-    }
-
-    if (existingData) {
-      // Update existing record
-      const newCount = existingData.usage_count + 1
-      const { error: updateError } = await supabase
+    try {
+      // Try to update existing record
+      const { data: existingData, error: fetchError } = await supabase
         .from('user_usage')
-        .update({ 
-          usage_count: newCount,
-          updated_at: new Date().toISOString()
-        })
+        .select('usage_count')
         .eq('user_id', userId)
         .eq('month_year', monthYear)
-
-      if (updateError) {
-        console.error('Error updating usage:', updateError)
-        throw updateError
-      }
-
-      return newCount
-    } else {
-      // Create new record
-      const { data, error: insertError } = await supabase
-        .from('user_usage')
-        .insert({
-          user_id: userId,
-          month_year: monthYear,
-          usage_count: 1
-        })
-        .select('usage_count')
         .single()
 
-      if (insertError) {
-        console.error('Error creating usage record:', insertError)
-        throw insertError
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching usage for increment:', fetchError)
+        return 1 // treat as first usage
       }
 
-      return data.usage_count
+      if (existingData) {
+        const newCount = existingData.usage_count + 1
+        const { error: updateError } = await supabase
+          .from('user_usage')
+          .update({ 
+            usage_count: newCount,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId)
+          .eq('month_year', monthYear)
+
+        if (updateError) {
+          console.error('Error updating usage:', updateError)
+          return existingData.usage_count // fallback keep old count
+        }
+        return newCount
+      } else {
+        const { data, error: insertError } = await supabase
+          .from('user_usage')
+          .insert({
+            user_id: userId,
+            month_year: monthYear,
+            usage_count: 1
+          })
+          .select('usage_count')
+          .single()
+
+        if (insertError) {
+          console.error('Error creating usage record:', insertError)
+          return 1
+        }
+        return data.usage_count
+      }
+    } catch (e) {
+      console.error('Supabase increment usage failed (fallback to 1):', e)
+      return 1
     }
   }
 

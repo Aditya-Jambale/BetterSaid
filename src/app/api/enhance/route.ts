@@ -4,149 +4,278 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { UsageService } from '@/lib/usageService';
 
-// Check if API key is available
-if (!process.env.GEMINI_API_KEY) {
-  console.error('GEMINI_API_KEY is not configured');
-  // Throw an error during build time or server start if the key is missing
-  throw new Error('Server configuration error: GEMINI_API_KEY is missing.');
+// NOTE: Do NOT throw at module scope for missing env vars; respond gracefully instead.
+const MODEL_NAME = 'gemini-2.5-flash-lite-preview-06-17'; // Use -latest for automatic updates
+
+function buildGeminiUrl() {
+  const key = process.env.GEMINI_API_KEY;
+  return `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${key}`;
 }
 
-const MODEL_NAME = 'gemini-2.5-flash-lite-preview-06-17'; // Use -latest for automatic updates
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+interface UsageCheckResult {
+  canUse: boolean;
+  currentUsage: number;
+  limit: number;
+  remaining: number;
+}
+
+interface GeminiStructuredResponse {
+  enhanced_prompt?: string;
+  enhancedPrompt?: string;
+  improvements?: string[];
+  [key: string]: unknown;
+}
+
+function determinePlan(has: (q: any) => boolean): string {
+  if (has({ plan: 'business' })) return 'business';
+  if (has({ plan: 'pro' })) return 'pro';
+  if (has({ plan: 'starter' })) return 'starter';
+  return 'free';
+}
+
+async function safeCheckUsage(userId: string, currentPlan: string): Promise<UsageCheckResult> {
+  try {
+    return await UsageService.checkUsageLimit(userId, currentPlan);
+  } catch (e) {
+    console.error('Error checking usage limits:', e);
+    return { canUse: true, currentUsage: 0, limit: 25, remaining: 25 };
+  }
+}
+
+function buildSystemInstruction(prompt: string): string {
+  return `
+You are an expert Prompt Enhancement AI that transforms user inputs into highly effective prompts using advanced prompt engineering techniques proven to maximize LLM performance.
+
+<analysis_phase>
+Before enhancing any prompt, conduct this systematic analysis:
+1. **Intent Classification**: Determine the prompt type (coding/technical, creative writing, analysis/research, conversation/chat, data processing, visual/UI generation)
+2. **Complexity Assessment**: Evaluate if this requires single-step or multi-step reasoning
+3. **Output Requirements**: Identify desired format, length, style, and technical specifications
+4. **Context Gaps**: Find missing background information, constraints, or success criteria
+5. **Ambiguity Detection**: Identify vague language, unclear references, or conflicting instructions
+</analysis_phase>
+
+<enhancement_techniques>
+Apply these proven techniques based on prompt type:
+
+**Universal Enhancements**:
+- Add clear role assignment (e.g., "You are an expert data analyst...")
+- Include chain-of-thought instructions for complex reasoning
+- Structure with XML tags for clarity (<context>, <task>, <constraints>, <output_format>)
+- Specify exact output format with examples
+- Add success criteria and quality metrics
+- Include "let's think step by step" for reasoning tasks
+- Remove contradictory or ambiguous instructions
+
+**Type-Specific Enhancements**:
+
+For CODING prompts:
+- Specify language, framework, and version requirements
+- Include error handling and edge case instructions
+- Add code style preferences (verbose variable names, commenting standards)
+- Define testing and validation requirements
+- Include directory structure if relevant
+
+For CREATIVE WRITING:
+- Define tone, style, and voice parameters
+- Specify length constraints precisely
+- Include genre conventions and audience
+- Add emotional beats or story structure
+
+For ANALYSIS/RESEARCH:
+- Include source preference and citation requirements
+- Specify depth of analysis needed
+- Add data handling instructions
+- Include bias awareness notes
+
+For DATA PROCESSING:
+- Specify input/output formats explicitly
+- Include data validation rules
+- Add error handling for edge cases
+- Define transformation logic clearly
+</enhancement_techniques>
+
+<enhancement_patterns>
+Apply these structural patterns:
+
+**Pattern 1: Context-Task-Constraints-Output**
+<context>[Background information]</context>
+<task>[Specific instructions]</task>
+<constraints>[Limitations and requirements]</constraints>
+<output_format>[Exact format needed]</output_format>
+
+**Pattern 2: Few-Shot Examples**
+When beneficial, include 2-3 examples showing:
+- Input → Expected Output
+- Good vs Bad outputs
+- Edge case handling
+
+**Pattern 3: Progressive Refinement**
+For complex tasks, break into phases:
+1. Initial analysis/planning
+2. Core execution
+3. Validation and refinement
+4. Final output formatting
+</enhancement_patterns>
+
+<meta_enhancement_rules>
+- If original prompt < 20 words: Expand with context, examples, and specifications
+- If original prompt lacks structure: Apply XML formatting
+- If original prompt is ambiguous: Add specific parameters and constraints
+- If original prompt requests creativity: Add style guides and quality rubrics
+- If original prompt involves reasoning: Add "think step-by-step" instructions
+- Always preserve user's core intent while maximizing clarity
+- Never add unnecessary complexity; enhance for effectiveness
+</meta_enhancement_rules>
+
+<response_generation>
+Your enhanced prompt should:
+1. Start with a clear role assignment
+2. Provide necessary context
+3. State the task explicitly
+4. Include relevant constraints
+5. Specify output format
+6. Add quality criteria
+7. Include examples if helpful
+8. Use structured formatting (XML tags or markdown)
+</response_generation>
+
+## OUTPUT REQUIREMENT
+You MUST return your response as a valid JSON object with this EXACT structure:
+
+{
+  "enhanced_prompt": "[Complete enhanced prompt ready for direct use]",
+  "improvements": [
+    "[Improvement 1: Specific technique applied and why]",
+    "[Improvement 2: Specific technique applied and why]",
+    "[Improvement 3: Specific technique applied and why]",
+    "[Additional improvements as needed, typically 3-5 total]"
+  ]
+}
+
+Rules for JSON response:
+- Return ONLY the JSON object
+- No markdown code blocks around the JSON
+- No additional text before or after
+- The enhanced_prompt should be a complete, self-contained prompt
+- Each improvement should be specific and actionable
+- Improvements should reference the techniques applied
+
+Now, enhance the following user prompt:
+"${prompt.trim()}"
+`;
+}
+
+async function callGemini(systemInstruction: string) {
+  const requestBody = {
+    contents: [{ parts: [{ text: systemInstruction }] }],
+    generationConfig: {
+      response_mime_type: 'application/json',
+      temperature: 0.5,
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 2048,
+    },
+  };
+
+  const response = await fetch(buildGeminiUrl(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requestBody),
+  });
+
+  let rawBody: string | undefined;
+  if (!response.ok) {
+    try {
+      rawBody = await response.text();
+      let parsed: unknown;
+  parsed = JSON.parse(rawBody);
+      console.error('Gemini API Error:', response.status, parsed || rawBody);
+      return { error: 'Failed to get response from Gemini API', status: response.status, details: (parsed as any)?.error?.message || (parsed as any)?.error || rawBody?.slice(0, 500) || 'Unknown error' };
+    } catch (readErr) {
+      console.error('Gemini error & failed to read body', readErr);
+      return { error: 'Gemini API error (no body available)', status: response.status };
+    }
+  }
+
+  const data = await response.json();
+  const candidate = data.candidates?.[0];
+  const textPayload: string | undefined = candidate?.content?.parts?.[0]?.text;
+  if (!textPayload) {
+    return { error: 'AI response missing content', status: 502 };
+  }
+
+  let geminiJson: GeminiStructuredResponse | null = null;
+  try {
+    geminiJson = JSON.parse(textPayload);
+  } catch (jsonErr) {
+    const regex = /\{[\s\S]*\}/g;
+    const execResult = regex.exec(textPayload);
+    if (execResult?.[0]) {
+      try {
+        geminiJson = JSON.parse(execResult[0]);
+      } catch (innerErr) {
+        console.error('Failed to parse extracted JSON from AI response', innerErr);
+        return { error: 'Failed to parse AI JSON response', status: 500 };
+      }
+    } else {
+      console.error('No JSON object found in AI response', jsonErr);
+      return { error: 'AI response not in expected JSON format', status: 500 };
+    }
+  }
+  return { data: geminiJson };
+}
 
 export async function POST(req: Request) {
   try {
-    // Check authentication
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('Enhance route: GEMINI_API_KEY is missing');
+      return NextResponse.json({ error: 'Server configuration error: enhancement model API key not set. Please configure GEMINI_API_KEY.' }, { status: 500 });
+    }
+
     const { userId, has } = await auth();
-    
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Please sign in to continue.', requiresAuth: true },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized. Please sign in to continue.', requiresAuth: true }, { status: 401 });
     }
 
-    // Determine user's plan
-    const hasStarterPlan = has({ plan: 'starter' });
-    const hasProPlan = has({ plan: 'pro' });
-    const hasBusinessPlan = has({ plan: 'business' });
-    
-    let currentPlan = 'free';
-    if (hasBusinessPlan) currentPlan = 'business';
-    else if (hasProPlan) currentPlan = 'pro';
-    else if (hasStarterPlan) currentPlan = 'starter';
-
-    // Check usage limits
-    let usageCheck;
-    try {
-      usageCheck = await UsageService.checkUsageLimit(userId, currentPlan);
-    } catch (usageError) {
-      console.error('Error checking usage limits:', usageError);
-      // Allow the request to proceed if usage check fails, but log the error
-      usageCheck = { canUse: true, currentUsage: 0, limit: 25, remaining: 25 };
-    }
-    
+    const currentPlan = determinePlan(has);
+    const usageCheck = await safeCheckUsage(userId, currentPlan);
     if (!usageCheck.canUse) {
       return NextResponse.json({
         error: 'Usage limit exceeded for this month',
-        planInfo: {
-          currentPlan,
-          monthlyLimit: usageCheck.limit,
-          remainingUsage: usageCheck.remaining,
-          currentUsage: usageCheck.currentUsage
-        },
+        planInfo: { currentPlan, monthlyLimit: usageCheck.limit, remainingUsage: usageCheck.remaining, currentUsage: usageCheck.currentUsage },
         requiresUpgrade: true
       }, { status: 429 });
     }
 
     const { prompt } = await req.json();
-
     if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
       return NextResponse.json({ error: 'Invalid prompt provided' }, { status: 400 });
     }
 
-    // A more concise prompt, designed for JSON mode.
-    // We describe the desired output, and JSON mode handles the formatting.
-    const systemInstruction = `
-You are an expert Prompt Enhancement AI designed to transform user inputs into highly effective, results-oriented prompts that maximize LLM performance and output quality.
-
-## Your Enhancement Process:
-1. **Analyze** the user's intent and desired outcome
-2. **Identify gaps** in specificity, context, and structure  
-3. **Apply enhancement techniques** systematically
-4. **Return structured response** with enhanced prompt and improvements
-
-## Enhancement Techniques You Apply:
-- **Specificity**: Add concrete details, examples, and parameters
-- **Context**: Provide necessary background and constraints
-- **Structure**: Use clear formatting, step-by-step instructions, and output templates
-- **Clarity**: Remove ambiguity and define technical terms
-- **Actionability**: Include specific tasks, roles, and success criteria
-- **Output Format**: Specify desired length, style, and presentation format
-
-## Enhancement Principles:
-- Transform vague requests into precise instructions
-- Add relevant context without overwhelming detail
-- Include examples when they improve understanding
-- Specify output format and constraints
-- Break complex requests into clear steps
-- Add role-playing elements when beneficial
-- Include quality criteria and success metrics
-
-## CRITICAL: Your Response Format
-Return your response as a valid JSON object with this exact structure:
-{
-  "enhanced_prompt": "The complete improved prompt text that is ready to be copied and pasted directly into any AI system",
-  "improvements": [
-    "Brief explanation of key improvement 1 (e.g., 'Added specific role and context')",
-    "Brief explanation of key improvement 2 (e.g., 'Structured output format specified')",
-    "Brief explanation of key improvement 3 (e.g., 'Included concrete examples and constraints')"
-  ]
-}
-
-Return ONLY this JSON object with no additional text, formatting, or commentary outside the JSON structure. The enhanced_prompt field should contain the complete, ready-to-use prompt that maximizes LLM effectiveness and output quality. "${prompt.trim()}"
-`;
-
-    const requestBody = {
-      contents: [{ parts: [{ text: systemInstruction }] }],
-      generationConfig: {
-        // ** THIS IS THE KEY FIX **
-        response_mime_type: 'application/json',
-        temperature: 0.5, // Lower temperature for more predictable JSON output
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 2048,
-      },
-    };
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json();
-      console.error('Gemini API Error:', errorBody);
-      return NextResponse.json(
-        { error: 'Failed to get response from Gemini API', details: errorBody.error?.message ?? 'Unknown error' },
-        { status: response.status }
-      );
+    console.log('[ENHANCE] Incoming request user:', userId, 'plan:', currentPlan, 'prompt chars:', prompt.length);
+    const systemInstruction = buildSystemInstruction(prompt);
+    let geminiResult;
+    try {
+      console.log('[ENHANCE] Calling Gemini API...');
+      geminiResult = await callGemini(systemInstruction);
+      console.log('[ENHANCE] Gemini call completed');
+    } catch (networkErr) {
+      console.error('Network/Fetch error calling Gemini:', networkErr);
+      return NextResponse.json({ error: 'Failed to contact enhancement model service', details: (networkErr as Error)?.message }, { status: 502 });
     }
-
-    const data = await response.json();
-    const candidate = data.candidates?.[0];
-
-    // In JSON mode, the response in `parts[0].text` is already a valid JSON string.
-    // The Gemini API client libraries often parse this for you, but with fetch, we get the text.
-    // Let's safely parse it.
-    if (!candidate?.content?.parts?.[0]?.text) {
-        console.error('Invalid response structure from Gemini:', data);
-        return NextResponse.json({ error: 'Failed to parse response from AI service' }, { status: 500 });
+    if (geminiResult.error) {
+      return NextResponse.json({ error: geminiResult.error, details: (geminiResult as any).details }, { status: (geminiResult as any).status || 500 });
     }
-    
-    // The text part itself is the JSON string we need to parse.
-    const parsedResponse = JSON.parse(candidate.content.parts[0].text);
+    const geminiJson = (geminiResult as any).data as GeminiStructuredResponse;
+    if (!geminiJson || typeof geminiJson !== 'object') {
+      return NextResponse.json({ error: 'Empty or invalid AI response' }, { status: 500 });
+    }
+    const enhancedPromptValue = geminiJson.enhanced_prompt || geminiJson.enhancedPrompt;
+    const improvementsValue = Array.isArray(geminiJson.improvements) ? geminiJson.improvements : [];
+    if (!enhancedPromptValue) {
+      return NextResponse.json({ error: 'AI response missing enhanced prompt' }, { status: 500 });
+    }
 
     // Increment usage count after successful enhancement
     let newUsageCount = usageCheck.currentUsage;
@@ -161,8 +290,8 @@ Return ONLY this JSON object with no additional text, formatting, or commentary 
     }
 
     return NextResponse.json({
-      enhancedPrompt: parsedResponse.enhanced_prompt,
-      improvements: parsedResponse.improvements,
+      enhancedPrompt: enhancedPromptValue,
+      improvements: improvementsValue,
       planInfo: {
         currentPlan,
         monthlyLimit: updatedUsageCheck.limit,

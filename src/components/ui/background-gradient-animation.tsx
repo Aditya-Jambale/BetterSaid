@@ -17,6 +17,7 @@ export const BackgroundGradientAnimation = ({
   className,
   interactive = true,
   containerClassName,
+  fullScreen = true,
 }: {
   gradientBackgroundStart?: string;
   gradientBackgroundEnd?: string;
@@ -32,53 +33,70 @@ export const BackgroundGradientAnimation = ({
   className?: string;
   interactive?: boolean;
   containerClassName?: string;
+  fullScreen?: boolean;
 }) => {
   const interactiveRef = useRef<HTMLDivElement>(null);
+  const [effectiveSize, setEffectiveSize] = useState(size);
 
-  const [curX, setCurX] = useState(0);
-  const [curY, setCurY] = useState(0);
-  const [tgX, setTgX] = useState(0);
-  const [tgY, setTgY] = useState(0);
-  useEffect(() => {
-    document.body.style.setProperty(
-      "--gradient-background-start",
-      gradientBackgroundStart
-    );
-    document.body.style.setProperty(
-      "--gradient-background-end",
-      gradientBackgroundEnd
-    );
-    document.body.style.setProperty("--first-color", firstColor);
-    document.body.style.setProperty("--second-color", secondColor);
-    document.body.style.setProperty("--third-color", thirdColor);
-    document.body.style.setProperty("--fourth-color", fourthColor);
-    document.body.style.setProperty("--fifth-color", fifthColor);
-    document.body.style.setProperty("--pointer-color", pointerColor);
-    document.body.style.setProperty("--size", size);
-    document.body.style.setProperty("--blending-value", blendingValue);
-  }, [blendingValue, fifthColor, firstColor, fourthColor, pointerColor, secondColor, size, thirdColor, gradientBackgroundStart, gradientBackgroundEnd]);
+  // Store animated & target positions in refs to avoid endless React re-renders.
+  const posRef = useRef({ curX: 0, curY: 0, tgX: 0, tgY: 0 });
 
+  // Set CSS custom properties when inputs change.
+  // Responsive sizing: on small screens enlarge the gradient size and recentre to avoid dark edges
   useEffect(() => {
-    function move() {
-      if (!interactiveRef.current) {
-        return;
+    const updateSize = () => {
+      if (typeof window === 'undefined') return;
+      if (window.innerWidth < 640) {
+        // Increase size to cover edges on narrow viewports
+        setEffectiveSize('140%');
+      } else if (window.innerWidth < 768) {
+        setEffectiveSize('120%');
+      } else {
+        setEffectiveSize(size);
       }
-      setCurX(curX + (tgX - curX) / 20);
-      setCurY(curY + (tgY - curY) / 20);
-      interactiveRef.current.style.transform = `translate(${Math.round(
-        curX
-      )}px, ${Math.round(curY)}px)`;
-    }
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [size]);
 
-    move();
-  }, [tgX, tgY, curX, curY]);
+  useEffect(() => {
+    const b = document.body.style;
+    b.setProperty("--gradient-background-start", gradientBackgroundStart);
+    b.setProperty("--gradient-background-end", gradientBackgroundEnd);
+    b.setProperty("--first-color", firstColor);
+    b.setProperty("--second-color", secondColor);
+    b.setProperty("--third-color", thirdColor);
+    b.setProperty("--fourth-color", fourthColor);
+    b.setProperty("--fifth-color", fifthColor);
+    b.setProperty("--pointer-color", pointerColor);
+    b.setProperty("--size", effectiveSize);
+    b.setProperty("--blending-value", blendingValue);
+  }, [blendingValue, fifthColor, firstColor, fourthColor, pointerColor, secondColor, thirdColor, gradientBackgroundStart, gradientBackgroundEnd, effectiveSize]);
+
+  // Animation loop using requestAnimationFrame (no React state updates per frame)
+  useEffect(() => {
+    let frame: number;
+    const animate = () => {
+      const { curX, curY, tgX, tgY } = posRef.current;
+      const nx = curX + (tgX - curX) / 20;
+      const ny = curY + (tgY - curY) / 20;
+      posRef.current.curX = nx;
+      posRef.current.curY = ny;
+      if (interactiveRef.current) {
+        interactiveRef.current.style.transform = `translate(${Math.round(nx)}px, ${Math.round(ny)}px)`;
+      }
+      frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (interactiveRef.current) {
-      const rect = interactiveRef.current.getBoundingClientRect();
-      setTgX(event.clientX - rect.left);
-      setTgY(event.clientY - rect.top);
-    }
+    if (!interactiveRef.current) return;
+    const rect = interactiveRef.current.getBoundingClientRect();
+    posRef.current.tgX = event.clientX - rect.left;
+    posRef.current.tgY = event.clientY - rect.top;
   };
 
   const [isSafari, setIsSafari] = useState(false);
@@ -89,9 +107,14 @@ export const BackgroundGradientAnimation = ({
   return (
     <div
       className={cn(
-        "h-screen w-screen relative overflow-hidden top-0 left-0 bg-[linear-gradient(40deg,var(--gradient-background-start),var(--gradient-background-end))]",
+        fullScreen
+          ? "h-screen w-screen"
+          : "h-full w-full",
+        "relative overflow-hidden top-0 left-0 bg-[linear-gradient(40deg,var(--gradient-background-start),var(--gradient-background-end))]",
         containerClassName
       )}
+  onMouseMove={interactive ? handleMouseMove : undefined}
+  // Decorative animated background; no interactive semantics needed
     >
       <svg className="hidden">
         <defs>
@@ -223,10 +246,10 @@ export const BackgroundGradientAnimation = ({
           )}
         ></div>
 
-        {/* Left and right side gradients */}
+        {/* Left and right side gradients (hidden on small screens to avoid edge-only visuals) */}
         <div
           className={cn(
-            `absolute [background:radial-gradient(circle_at_center,_rgba(var(--second-color),_0.5)_0,_rgba(var(--second-color),_0)_50%)_no-repeat]`,
+            `hidden sm:block absolute [background:radial-gradient(circle_at_center,_rgba(var(--second-color),_0.5)_0,_rgba(var(--second-color),_0)_50%)_no-repeat]`,
             `[mix-blend-mode:var(--blending-value)] w-[60%] h-[80%] top-[20%] left-[5%]`,
             `[transform-origin:calc(50%-600px)]`,
             `animate-third`,
@@ -235,7 +258,7 @@ export const BackgroundGradientAnimation = ({
         ></div>
         <div
           className={cn(
-            `absolute [background:radial-gradient(circle_at_center,_rgba(var(--third-color),_0.6)_0,_rgba(var(--third-color),_0)_50%)_no-repeat]`,
+            `hidden sm:block absolute [background:radial-gradient(circle_at_center,_rgba(var(--third-color),_0.6)_0,_rgba(var(--third-color),_0)_50%)_no-repeat]`,
             `[mix-blend-mode:var(--blending-value)] w-[60%] h-[80%] top-[25%] right-[5%]`,
             `[transform-origin:calc(50%+600px)]`,
             `animate-fourth`,
@@ -266,9 +289,9 @@ export const BackgroundGradientAnimation = ({
         {interactive && (
           <div
             ref={interactiveRef}
-            onMouseMove={handleMouseMove}
+            aria-hidden="true"
             className={cn(
-              `absolute [background:radial-gradient(circle_at_center,_rgba(var(--pointer-color),_0.8)_0,_rgba(var(--pointer-color),_0)_50%)_no-repeat]`,
+              `absolute pointer-events-none [background:radial-gradient(circle_at_center,_rgba(var(--pointer-color),_0.8)_0,_rgba(var(--pointer-color),_0)_50%)_no-repeat]`,
               `[mix-blend-mode:var(--blending-value)] w-full h-full -top-1/2 -left-1/2`,
               `opacity-70`
             )}
