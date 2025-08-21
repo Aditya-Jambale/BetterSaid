@@ -1,4 +1,3 @@
-import { PricingTable } from '@clerk/nextjs'
 import Link from 'next/link'
 import { ArrowLeft, Zap, Shield, Users, Star, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -82,19 +81,34 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Pricing Table Container */}
+        {/* Beta Pricing Notice */}
         <div className="w-full max-w-none mx-auto relative">
           <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
-            <CardContent className="p-4 md:p-6 lg:p-8">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">Choose Your Plan</h2>
-                <p className="text-gray-600 text-lg">All plans include our core features with different usage limits</p>
-              </div>
-              
-              {/* Clerk Pricing Table - Full Width Container */}
-              <div className="w-full overflow-x-auto overflow-y-visible bg-gray-50/30 rounded-2xl border border-gray-100/50 p-6 md:p-8">
-                <div className="w-full min-w-max block">
-                  <PricingTable />
+            <CardContent className="p-6 md:p-10">
+              <div className="text-center space-y-6">
+                <h2 className="text-3xl font-bold text-gray-900">Pricing Coming Soon</h2>
+                <div className="mx-auto max-w-2xl space-y-4 text-gray-600 text-lg">
+                  <p>
+                    BetterSaid is currently in <span className="font-semibold text-purple-600">open beta</span>. During this phase you can use core enhancement features <span className="font-medium">for free</span> while we refine infrastructure, quality and limits.
+                  </p>
+                  <p>
+                    Subscription plans (Starter, Pro, Business) will launch after beta with generous free tier allowances. Your feedback now directly shapes usage tiers and premium capabilities.
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    No billing is active yet. If you want early access to premium limits or to be notified at launch, follow updates from the home page.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+                  <Link href="/">
+                    <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium shadow-lg hover:shadow-xl px-6 h-11">
+                      Return Home
+                    </Button>
+                  </Link>
+                  <Link href="/#features">
+                    <Button variant="outline" className="h-11 border-2">
+                      View Features
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </CardContent>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, Sparkles, Clipboard, Check, Lightbulb, ArrowRight, Star, Zap, Shield, Clock, TrendingUp, ChevronRight, CheckCircle } from 'lucide-react';
+import { Loader2, Sparkles, Clipboard, Check, Lightbulb, ArrowRight, Star, Zap, Shield, Clock, TrendingUp, ChevronRight, CheckCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,12 +17,10 @@ import {
   UserButton, 
   SignedIn, 
   SignedOut,
-  useUser,
-  PricingTable
+  useUser
 } from '@clerk/nextjs';
 import Link from 'next/link';
 import { BackgroundGradientAnimation } from '@/components/ui/background-gradient-animation';
-import { X } from 'lucide-react';
 
 export default function Home() {
   // Get user info from Clerk
@@ -890,17 +888,6 @@ export default function Home() {
                           }}>
                             <p className="text-xs font-medium truncate text-gray-700 dark:text-gray-300 group-hover:text-purple-600">{item.original}</p>
                           </button>
-                          <div className="mt-2 flex justify-between items-center gap-2">
-                            <span className="text-[10px] text-gray-400 flex-1 truncate">{item.created_at ? new Date(item.created_at).toLocaleString() : ''}</span>
-                            <div className="flex items-center gap-1">
-                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { navigator.clipboard.writeText(item.enhanced || item.original); toast.success('Copied'); }}>
-                                <Clipboard className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={() => { deleteHistoryItem(item.id).catch(()=>toast.error('Failed')); }}>
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </div>
                         </div>
                       ))
                     )}
@@ -1147,7 +1134,7 @@ export default function Home() {
                     <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-200 shadow-lg">
                       <span className="text-2xl font-bold text-white">1</span>
                     </div>
-                    <div className="hidden md:block absolute top-10 left-full w-full h-0.5 bg-gradient-to-r from-purple-300 to-transparent"></div>
+                    <div className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-4 h-0.5 w-32 bg-gradient-to-r from-purple-300/70 to-transparent"></div>
                   </div>
                   <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Input Your Prompt</h3>
                   <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
@@ -1160,7 +1147,7 @@ export default function Home() {
                     <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-200 shadow-lg">
                       <span className="text-2xl font-bold text-white">2</span>
                     </div>
-                    <div className="hidden md:block absolute top-10 left-full w-full h-0.5 bg-gradient-to-r from-emerald-300 to-transparent"></div>
+                    <div className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-4 h-0.5 w-32 bg-gradient-to-r from-emerald-300/70 to-transparent"></div>
                   </div>
                   <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">AI Enhancement</h3>
                   <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
@@ -1392,7 +1379,7 @@ export default function Home() {
                     <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-200 shadow-lg">
                       <span className="text-2xl font-bold text-white">1</span>
                     </div>
-                    <div className="hidden md:block absolute top-10 left-full w-full h-0.5 bg-gradient-to-r from-purple-300 to-transparent"></div>
+                    <div className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-4 h-0.5 w-32 bg-gradient-to-r from-purple-300/70 to-transparent"></div>
                   </div>
                   <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Input Your Prompt</h3>
                   <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
@@ -1405,7 +1392,7 @@ export default function Home() {
                     <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-200 shadow-lg">
                       <span className="text-2xl font-bold text-white">2</span>
                     </div>
-                    <div className="hidden md:block absolute top-10 left-full w-full h-0.5 bg-gradient-to-r from-emerald-300 to-transparent"></div>
+                    <div className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-4 h-0.5 w-32 bg-gradient-to-r from-emerald-300/70 to-transparent"></div>
                   </div>
                   <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">AI Enhancement</h3>
                   <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
@@ -1576,30 +1563,34 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Pricing Table Container */}
+            {/* Beta Pricing Notice (match /pricing page) */}
             <div className="w-full max-w-none mx-auto relative">
               <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
-                <CardContent className="p-4 md:p-6 lg:p-8">
-                  <div className="text-center mb-8">
-                    <h3 className="text-3xl font-bold text-gray-900 mb-4">Choose Your Plan</h3>
-                    <p className="text-gray-600 text-lg">All plans include our core features with different usage limits</p>
-                  </div>
-                  
-                  {/* Clerk Pricing Table - Full Width Container */}
-                  <div className="w-full bg-gray-50/30 rounded-xl md:rounded-2xl border border-gray-100/50 p-3 sm:p-4 md:p-8">
-                    {/* Mobile: horizontal scroll (no clipping); Desktop: normal full table */}
-                    <div className="sm:hidden">
-                      <div className="overflow-x-auto pb-2 snap-x snap-mandatory flex gap-4 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
-                        <div className="min-w-[680px] snap-start">
-                          <PricingTable />
-                        </div>
-                      </div>
-                      <div className="mt-2 text-[11px] text-center text-gray-500 dark:text-gray-400">
-                        Swipe sideways to view all plan details
-                      </div>
+                <CardContent className="p-6 md:p-10">
+                  <div className="text-center space-y-6">
+                    <h2 className="text-3xl font-bold text-gray-900">Pricing Coming Soon</h2>
+                    <div className="mx-auto max-w-2xl space-y-4 text-gray-600 text-lg">
+                      <p>
+                        BetterSaid is currently in <span className="font-semibold text-purple-600">open beta</span>. During this phase you can use core enhancement features <span className="font-medium">for free</span> while we refine infrastructure, quality and limits.
+                      </p>
+                      <p>
+                        Subscription plans (Starter, Pro, Business) will launch after beta with generous free tier allowances. Your feedback now directly shapes usage tiers and premium capabilities.
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        No billing is active yet. If you want early access to premium limits or to be notified at launch, follow updates from the home page.
+                      </p>
                     </div>
-                    <div className="hidden sm:block">
-                      <PricingTable />
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+                      <SignUpButton mode="modal">
+                        <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium shadow-lg hover:shadow-xl px-6 h-11">
+                          Join Beta Free
+                        </Button>
+                      </SignUpButton>
+                      <Link href="/release">
+                        <Button variant="outline" className="h-11 border-2">
+                          Learn More
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </CardContent>
