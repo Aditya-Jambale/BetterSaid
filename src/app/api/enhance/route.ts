@@ -25,8 +25,9 @@ interface GeminiStructuredResponse {
   improvements?: string[];
   [key: string]: unknown;
 }
+interface PlanQuery { plan: string }
 
-function determinePlan(has: (q: any) => boolean): string {
+function determinePlan(has: (q: PlanQuery) => boolean): string {
   if (has({ plan: 'business' })) return 'business';
   if (has({ plan: 'pro' })) return 'pro';
   if (has({ plan: 'starter' })) return 'starter';
@@ -166,7 +167,15 @@ Now, enhance the following user prompt:
 `;
 }
 
-async function callGemini(systemInstruction: string) {
+type GeminiError = { error: string; status?: number; details?: string };
+type GeminiSuccess = { data: GeminiStructuredResponse };
+type GeminiResult = GeminiError | GeminiSuccess;
+
+function isGeminiError(res: GeminiResult): res is GeminiError {
+  return 'error' in res;
+}
+
+async function callGemini(systemInstruction: string): Promise<GeminiResult> {
   const requestBody = {
     contents: [{ parts: [{ text: systemInstruction }] }],
     generationConfig: {
@@ -188,10 +197,14 @@ async function callGemini(systemInstruction: string) {
   if (!response.ok) {
     try {
       rawBody = await response.text();
-      let parsed: unknown;
-  parsed = JSON.parse(rawBody);
+      const parsed: unknown = JSON.parse(rawBody);
+      const parsedErr = parsed as { error?: { message?: string } } | undefined;
       console.error('Gemini API Error:', response.status, parsed || rawBody);
-      return { error: 'Failed to get response from Gemini API', status: response.status, details: (parsed as any)?.error?.message || (parsed as any)?.error || rawBody?.slice(0, 500) || 'Unknown error' };
+      return {
+        error: 'Failed to get response from Gemini API',
+        status: response.status,
+        details: parsedErr?.error?.message || rawBody?.slice(0, 500) || 'Unknown error'
+      };
     } catch (readErr) {
       console.error('Gemini error & failed to read body', readErr);
       return { error: 'Gemini API error (no body available)', status: response.status };
@@ -222,6 +235,9 @@ async function callGemini(systemInstruction: string) {
       console.error('No JSON object found in AI response', jsonErr);
       return { error: 'AI response not in expected JSON format', status: 500 };
     }
+  }
+  if (!geminiJson) {
+    return { error: 'Empty AI JSON payload', status: 500 };
   }
   return { data: geminiJson };
 }
@@ -255,7 +271,7 @@ export async function POST(req: Request) {
 
     console.log('[ENHANCE] Incoming request user:', userId, 'plan:', currentPlan, 'prompt chars:', prompt.length);
     const systemInstruction = buildSystemInstruction(prompt);
-    let geminiResult;
+  let geminiResult: GeminiResult;
     try {
       console.log('[ENHANCE] Calling Gemini API...');
       geminiResult = await callGemini(systemInstruction);
@@ -264,10 +280,10 @@ export async function POST(req: Request) {
       console.error('Network/Fetch error calling Gemini:', networkErr);
       return NextResponse.json({ error: 'Failed to contact enhancement model service', details: (networkErr as Error)?.message }, { status: 502 });
     }
-    if (geminiResult.error) {
-      return NextResponse.json({ error: geminiResult.error, details: (geminiResult as any).details }, { status: (geminiResult as any).status || 500 });
+    if (isGeminiError(geminiResult)) {
+      return NextResponse.json({ error: geminiResult.error, details: geminiResult.details }, { status: geminiResult.status || 500 });
     }
-    const geminiJson = (geminiResult as any).data as GeminiStructuredResponse;
+    const geminiJson = geminiResult.data;
     if (!geminiJson || typeof geminiJson !== 'object') {
       return NextResponse.json({ error: 'Empty or invalid AI response' }, { status: 500 });
     }
