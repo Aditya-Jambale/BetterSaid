@@ -1588,7 +1588,7 @@ export default function Home() {
                       </SignUpButton>
                       <Link href="/release">
                         <Button variant="outline" className="h-11 border-2">
-                          Learn More
+                          Release Notes
                         </Button>
                       </Link>
                     </div>

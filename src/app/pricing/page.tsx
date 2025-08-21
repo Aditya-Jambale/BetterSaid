@@ -104,9 +104,9 @@ export default function PricingPage() {
                       Return Home
                     </Button>
                   </Link>
-                  <Link href="/#features">
+                  <Link href="/release">
                     <Button variant="outline" className="h-11 border-2">
-                      View Features
+                      Release Notes
                     </Button>
                   </Link>
                 </div>

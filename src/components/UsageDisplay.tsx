@@ -64,7 +64,8 @@ export function UsageDisplay({ planInfo }: { planInfo?: UsageInfo }) {
   const progressColor = getProgressColor()
 
   return (
-    <Card className={cardClassName}>
+    <Link href="/pricing" className="block group focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-md">
+    <Card className={cardClassName + ' transition-colors group-hover:border-purple-300 group-hover:shadow-md cursor-pointer'}>
       <CardContent className="p-3">
         <div className="flex items-center justify-between mb-2">
           <Badge variant="secondary" className="flex items-center gap-1 text-xs">
@@ -106,11 +107,7 @@ export function UsageDisplay({ planInfo }: { planInfo?: UsageInfo }) {
             </span>
             
             {usage.currentPlan === 'free' && (
-              <Link href="/pricing">
-                <Button size="sm" variant="ghost" className="text-xs h-5 px-1.5">
-                  Plans
-                </Button>
-              </Link>
+              <span className="text-xs text-purple-600 group-hover:underline">View Plans</span>
             )}
           </div>
         </div>
@@ -123,6 +120,7 @@ export function UsageDisplay({ planInfo }: { planInfo?: UsageInfo }) {
           </div>
         )}
       </CardContent>
-    </Card>
+  </Card>
+  </Link>
   )
 }
