@@ -1,7 +1,7 @@
 // app/api/enhance/route.ts
 
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { UsageService } from '@/lib/usageService';
 
 // NOTE: Do NOT throw at module scope for missing env vars; respond gracefully instead.
@@ -255,7 +255,19 @@ export async function POST(req: Request) {
     }
 
     const currentPlan = determinePlan(has);
-    const usageCheck = await safeCheckUsage(userId, currentPlan);
+    // Check unlimited flag via Clerk metadata
+    let isUnlimited = false;
+    try {
+      const client = await clerkClient();
+      const user = await client.users.getUser(userId);
+      isUnlimited = (user.publicMetadata as Record<string, unknown> | null | undefined)?.unlimited_enhancements === true;
+    } catch (e) {
+      console.warn('Failed to fetch user metadata for unlimited check:', e);
+    }
+
+    const usageCheck = isUnlimited
+      ? { canUse: true, currentUsage: 0, limit: -1, remaining: 0 }
+      : await safeCheckUsage(userId, currentPlan);
     if (!usageCheck.canUse) {
       return NextResponse.json({
         error: 'Usage limit exceeded for this month',
@@ -297,22 +309,24 @@ export async function POST(req: Request) {
     let newUsageCount = usageCheck.currentUsage;
     let updatedUsageCheck = usageCheck;
     
-    try {
-      newUsageCount = await UsageService.incrementUsage(userId);
-      updatedUsageCheck = await UsageService.checkUsageLimit(userId, currentPlan);
-    } catch (usageError) {
-      console.error('Error updating usage count:', usageError);
-      // Continue with the response even if usage tracking fails
+    if (!isUnlimited) {
+      try {
+        newUsageCount = await UsageService.incrementUsage(userId);
+        updatedUsageCheck = await UsageService.checkUsageLimit(userId, currentPlan);
+      } catch (usageError) {
+        console.error('Error updating usage count:', usageError);
+        // Continue with the response even if usage tracking fails
+      }
     }
 
     return NextResponse.json({
       enhancedPrompt: enhancedPromptValue,
       improvements: improvementsValue,
       planInfo: {
-        currentPlan,
+        currentPlan: isUnlimited ? 'unlimited' : currentPlan,
         monthlyLimit: updatedUsageCheck.limit,
         remainingUsage: updatedUsageCheck.remaining,
-        currentUsage: newUsageCount
+        currentUsage: isUnlimited ? 0 : newUsageCount
       }
     });
 

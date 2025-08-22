@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { clerkClient } from '@clerk/nextjs/server'
 
 export interface UsageRecord {
   id: string
@@ -29,6 +30,18 @@ export class UsageService {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   }
 
+  // Check if user has unlimited access via Clerk metadata
+  private static async hasUnlimitedAccess(userId: string): Promise<boolean> {
+    try {
+      const clerk = await clerkClient();
+      const user = await clerk.users.getUser(userId);
+      return user.publicMetadata?.unlimited_enhancements === true;
+    } catch (error) {
+      console.error('Error checking unlimited access:', error);
+      return false;
+    }
+  }
+
   static async getCurrentUsage(userId: string): Promise<number> {
     const monthYear = this.getCurrentMonthYear()
     try {
@@ -51,6 +64,12 @@ export class UsageService {
   }
 
   static async incrementUsage(userId: string): Promise<number> {
+    // Don't increment usage for unlimited users
+    const isUnlimited = await this.hasUnlimitedAccess(userId);
+    if (isUnlimited) {
+      return 0; // Return 0 for unlimited users
+    }
+
     const monthYear = this.getCurrentMonthYear()
     try {
       // Try to update existing record
@@ -120,7 +139,21 @@ export class UsageService {
     currentUsage: number
     limit: number
     remaining: number
+    isUnlimited?: boolean
   }> {
+    // Check for unlimited access first
+    const isUnlimited = await this.hasUnlimitedAccess(userId);
+    
+    if (isUnlimited) {
+      return {
+        canUse: true,
+        currentUsage: 0,
+        limit: -1, // -1 indicates unlimited
+        remaining: -1,
+        isUnlimited: true
+      };
+    }
+
     const currentUsage = await this.getCurrentUsage(userId)
     const limit = this.getPlanLimit(planName)
     const remaining = Math.max(0, limit - currentUsage)
@@ -129,7 +162,8 @@ export class UsageService {
       canUse: currentUsage < limit,
       currentUsage,
       limit,
-      remaining
+      remaining,
+      isUnlimited: false
     }
   }
 }

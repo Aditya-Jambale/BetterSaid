@@ -614,7 +614,7 @@ export default function Home() {
                   <Clock className="h-4 w-4" /> History
                 </Button>
               </div>
-              {/* Mobile-only plan & usage above enhanced prompt */}
+              {/* Mobile-only plan & usage above enhanced prompt - always show when signed in */}
               <SignedIn>
                 <div className="mb-4 md:hidden">
                   <UsageDisplay planInfo={planInfo ? {
@@ -627,7 +627,7 @@ export default function Home() {
               </SignedIn>
               {/* Input Section - Always visible when no enhanced prompt */}
               {!enhancedPrompt && !isEnhancing && (
-                <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm overflow-hidden mb-8">
+                <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm overflow-hidden mb-8 flex flex-col xl:h-[620px]">
                   <CardHeader className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border-b border-purple-100 dark:border-purple-800">
                     <CardTitle className="text-xl flex items-center gap-2">
                       <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
@@ -636,13 +636,13 @@ export default function Home() {
                       Your Prompt
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6 space-y-6">
-                    <div className="relative">
+                  <CardContent className="p-6 space-y-6 flex-1 flex flex-col min-h-0">
+                    <div className="relative flex-1 min-h-0">
                       <Textarea
                         placeholder="Enter your prompt here... (e.g., 'Write a blog post about AI')"
                         value={inputPrompt}
                         onChange={(e) => setInputPrompt(e.target.value)}
-                        className="resize-vertical border-gray-200 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500 bg-gray-50/50 dark:bg-gray-900/50 text-base md:text-[17px] leading-relaxed w-full min-h-48 md:min-h-64"
+                        className="border-gray-200 dark:border-gray-700 focus:border-purple-500 focus:ring-purple-500 bg-gray-50/50 dark:bg-gray-900/50 text-base md:text-[17px] leading-relaxed w-full h-full min-h-48 md:min-h-64 resize-none"
                       />
                       <div className="absolute bottom-3 right-3 text-xs text-gray-400">
                         {inputPrompt.length} characters
@@ -651,7 +651,7 @@ export default function Home() {
                     <Button 
                       onClick={handleEnhance}
                       disabled={isLoading || !inputPrompt.trim()}
-                      className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium text-base shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
+                      className="w-full h-12 mt-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium text-base shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
                     >
                       {isLoading ? (
                         <>
@@ -922,7 +922,7 @@ export default function Home() {
 
             {/* History Sidebar - Order 3 on mobile, 2 on tablet, 1 on desktop */}
             <aside className="order-3 md:order-2 xl:order-1 md:col-span-1 xl:col-span-3 min-w-0 xl:flex xl:flex-col xl:space-y-4 xl:h-[620px]">
-              {/* Usage Display - Show plan info and usage limits (desktop stacked) */}
+              {/* Usage Display - Desktop sidebar (always show when signed in) */}
               <SignedIn>
                 <div className="flex-shrink-0 hidden md:block">
                   <UsageDisplay planInfo={planInfo ? {
