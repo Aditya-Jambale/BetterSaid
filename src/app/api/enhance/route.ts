@@ -4,7 +4,7 @@ import { UsageService } from '@/lib/usageService';
 import { GoogleGenAI } from '@google/genai';
 
 // NOTE: Do NOT throw at module scope for missing env vars; respond gracefully instead.
-const MODEL_NAME = 'gemini-3-pro-preview';
+const MODEL_NAME = 'gemini-2.5-flash-preview-09-2025';
 
 interface UsageCheckResult {
   canUse: boolean;
